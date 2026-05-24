@@ -1,0 +1,60 @@
+<div class="verify-container">
+  <div class="verify-card">
+    <div class="card-header">
+      <div class="icon-wrapper">
+        <i class="fa-solid fa-clipboard-check"></i>
+      </div>
+      <h2>Verify Details</h2>
+      <p>Please review the lead information before saving.</p>
+    </div>
+    
+    <div class="details-box" *ngIf="lead">
+      <div class="detail-row">
+        <div class="detail-label">
+          <i class="fa-regular fa-id-badge"></i>
+          <span>Full Name</span>
+        </div>
+        <span class="value">{{ lead.name }}</span>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">
+          <i class="fa-regular fa-envelope"></i>
+          <span>Email Address</span>
+        </div>
+        <span class="value">{{ lead.email }}</span>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">
+          <i class="fa-solid fa-signal"></i>
+          <span>Status</span>
+        </div>
+        <span class="value badge badge-outline">{{ lead.status }}</span>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i>
+          <span>Source</span>
+        </div>
+        <span class="value">{{ lead.source }}</span>
+      </div>
+      <div class="detail-row" *ngIf="lead.notes">
+        <div class="detail-label">
+          <i class="fa-regular fa-note-sticky"></i>
+          <span>Notes</span>
+        </div>
+        <span class="value">{{ lead.notes }}</span>
+      </div>
+    </div>
+
+    <div class="action-buttons">
+      <button class="btn edit-btn" (click)="edit()" [disabled]="isSubmitting">
+        <i class="fa-solid fa-pen"></i> Edit
+      </button>
+      <button class="btn confirm-btn" (click)="confirm()" [disabled]="isSubmitting">
+        <i class="fa-solid fa-check" *ngIf="!isSubmitting"></i>
+        <i class="fa-solid fa-spinner fa-spin" *ngIf="isSubmitting"></i>
+        {{ isSubmitting ? 'Saving...' : 'Confirm & Save' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,27 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="brand-icon">
+      <i class="fa-solid fa-layer-group"></i>
+    </div>
+    <h2>Admin Portal</h2>
+    <p>Sign in to your account</p>
+    
+    <div class="floating-group">
+      <input type="text" id="username" [(ngModel)]="username" placeholder=" ">
+      <label for="username">Username</label>
+    </div>
+
+    <div class="floating-group">
+      <input type="password" id="password" [(ngModel)]="password" placeholder=" ">
+      <label for="password">Password</label>
+    </div>
+
+    <div class="error-message" *ngIf="errorMessage">
+      <i class="fa-solid fa-circle-exclamation"></i> {{ errorMessage }}
+    </div>
+
+    <button class="login-button" (click)="login()">
+      Sign In <i class="fa-solid fa-arrow-right"></i>
+    </button>
+  </div>
+</div>

@@ -1,0 +1,79 @@
+<div class="layout-container" [class.collapsed]="isCollapsed">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2 *ngIf="!isCollapsed">Admin Portal</h2>
+      <i class="fa-solid fa-layer-group logo-icon" *ngIf="isCollapsed"></i>
+    </div>
+    
+    <nav class="sidebar-nav">
+      <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
+        <i class="fa-solid fa-chart-pie nav-icon"></i>
+        <span class="nav-text" *ngIf="!isCollapsed">Dashboard</span>
+      </a>
+      <a routerLink="/add-employee" routerLinkActive="active" class="nav-item">
+        <i class="fa-solid fa-user-plus nav-icon"></i>
+        <span class="nav-text" *ngIf="!isCollapsed">Add Lead</span>
+      </a>
+      <a routerLink="/ocr-scanner" routerLinkActive="active" class="nav-item">
+        <i class="fa-solid fa-file-invoice nav-icon"></i>
+        <span class="nav-text" *ngIf="!isCollapsed">OCR Scanner</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="nav-item logout-btn" (click)="logout()" title="Logout">
+        <i class="fa-solid fa-right-from-bracket nav-icon"></i>
+        <span class="nav-text" *ngIf="!isCollapsed">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Top Navbar -->
+    <header class="top-navbar">
+      <div class="navbar-left">
+        <button class="toggle-btn" (click)="toggleSidebar()">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+      <div class="navbar-right">
+        <div class="nav-time">{{ currentTime | date:'medium' }}</div>
+        
+        <button class="icon-btn" (click)="toggleDarkMode()" title="Toggle Theme">
+          <i class="fa-solid" [ngClass]="isDarkMode ? 'fa-sun' : 'fa-moon'"></i>
+        </button>
+
+        <button class="icon-btn notification-bell">
+          <i class="fa-regular fa-bell"></i>
+          <span class="badge">3</span>
+        </button>
+
+        <div class="profile-menu">
+          <img src="https://ui-avatars.com/api/?name=Admin+User&background=007bff&color=fff" alt="Profile" class="avatar">
+          <span class="profile-name">Admin</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-wrapper">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+
+  <!-- Toast Container -->
+  <div class="toast-container">
+    <div *ngFor="let toast of toasts" class="toast" [ngClass]="toast.type">
+      <i class="fa-solid" 
+         [ngClass]="{
+           'fa-circle-check': toast.type === 'success',
+           'fa-circle-exclamation': toast.type === 'error',
+           'fa-circle-info': toast.type === 'info'
+         }"></i>
+      <span class="toast-message">{{ toast.message }}</span>
+      <button class="toast-close" (click)="removeToast(toast)"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+</div>

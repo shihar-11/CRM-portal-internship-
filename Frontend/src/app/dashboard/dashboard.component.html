@@ -1,0 +1,208 @@
+<div class="dashboard-container">
+  
+  <div class="page-header">
+    <h2>CRM Dashboard</h2>
+    <button class="btn add-btn" (click)="openAddModal()">
+      <i class="fa-solid fa-plus"></i> Add Lead
+    </button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon leads-icon">
+        <i class="fa-solid fa-users"></i>
+      </div>
+      <div class="stat-content">
+        <h3>Total Leads</h3>
+        <p class="stat-value">{{ totalLeads }}</p>
+      </div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon new-icon">
+        <i class="fa-solid fa-user-plus"></i>
+      </div>
+      <div class="stat-content">
+        <h3>New Leads</h3>
+        <p class="stat-value">{{ newLeads }}</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon converted-icon">
+        <i class="fa-solid fa-handshake"></i>
+      </div>
+      <div class="stat-content">
+        <h3>Converted</h3>
+        <p class="stat-value">{{ convertedLeads }}</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon rejected-icon">
+        <i class="fa-solid fa-user-xmark"></i>
+      </div>
+      <div class="stat-content">
+        <h3>Rejected</h3>
+        <p class="stat-value">{{ rejectedLeads }}</p>
+      </div>
+    </div>
+  </div>
+
+  <main class="dashboard-content">
+    
+    <div class="controls-bar">
+      <div class="search-box">
+        <i class="fa-solid fa-search search-icon"></i>
+        <input type="text" placeholder="Search by name or email..." [(ngModel)]="searchTerm" (input)="applyFilters()">
+      </div>
+      <div class="filter-box">
+        <i class="fa-solid fa-filter filter-icon"></i>
+        <select [(ngModel)]="selectedStatus" (change)="applyFilters()">
+          <option value="">All Statuses</option>
+          <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <div class="loader-container" *ngIf="isLoading">
+        <div class="spinner"></div>
+      </div>
+
+      <table class="styled-table" *ngIf="!isLoading">
+        <thead>
+          <tr>
+            <th>Lead</th>
+            <th>Company</th>
+            <th>Contact</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Date Added</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let lead of paginatedLeads">
+            <td>
+              <div class="emp-name-cell">
+                <div class="emp-avatar">{{ lead.name.charAt(0) }}</div>
+                <span>{{ lead.name }}</span>
+              </div>
+            </td>
+            <td><strong>{{ lead.company || '—' }}</strong></td>
+            <td>
+              <div style="font-size: 13px;">{{ lead.email }}</div>
+              <div style="font-size: 12px; color: var(--text-secondary);" *ngIf="lead.linkedin_id">ID: {{ lead.linkedin_id }}</div>
+            </td>
+            <td><span class="badge source-badge">{{ lead.source }}</span></td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-new': lead.status === 'New',
+                'badge-contacted': lead.status === 'Contacted',
+                'badge-qualified': lead.status === 'Qualified',
+                'badge-converted': lead.status === 'Converted',
+                'badge-rejected': lead.status === 'Rejected'
+              }">{{ lead.status }}</span>
+            </td>
+            <td>{{ lead.created_at | date:'mediumDate' }}</td>
+            <td class="actions-col">
+              <button class="icon-action-btn edit-btn" title="Edit" (click)="openEditModal(lead)">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button class="icon-action-btn delete-btn" title="Delete" (click)="confirmDelete(lead)">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="filteredLeads.length === 0">
+            <td colspan="7" class="no-data">
+              <i class="fa-solid fa-folder-open empty-icon"></i>
+              <p>No leads found.</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Pagination Controls -->
+      <div class="pagination-controls" *ngIf="totalPages > 1 && !isLoading">
+        <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
+        <div class="page-buttons">
+          <button class="btn btn-sm outline-btn" (click)="prevPage()" [disabled]="currentPage === 1"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <button class="btn btn-sm outline-btn" (click)="nextPage()" [disabled]="currentPage === totalPages">Next <i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" *ngIf="showDeleteModal">
+    <div class="modal-card">
+      <div class="modal-icon warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3>Confirm Deletion</h3>
+      <p>Are you sure you want to delete lead <strong>{{ leadToDelete?.name }}</strong>? This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn cancel-btn" (click)="cancelDelete()">Cancel</button>
+        <button class="btn confirm-delete-btn" (click)="executeDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" *ngIf="showLeadModal">
+    <div class="modal-card lead-form-modal">
+      <div class="modal-header">
+        <h3>{{ isEditing ? 'Edit Lead' : 'Add New Lead' }}</h3>
+        <button class="close-btn" (click)="closeLeadModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group half">
+            <label>Name</label>
+            <input type="text" [(ngModel)]="leadForm.name" placeholder="Lead Name">
+          </div>
+          <div class="form-group half">
+            <label>Email</label>
+            <input type="email" [(ngModel)]="leadForm.email" placeholder="Email Address">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group half">
+            <label>Company</label>
+            <input type="text" [(ngModel)]="leadForm.company" placeholder="Company Name">
+          </div>
+          <div class="form-group half">
+            <label>LinkedIn ID</label>
+            <input type="text" [(ngModel)]="leadForm.linkedin_id" placeholder="Optional">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group half">
+            <label>Status</label>
+            <select [(ngModel)]="leadForm.status">
+              <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+            </select>
+          </div>
+          <div class="form-group half">
+            <label>Source</label>
+            <select [(ngModel)]="leadForm.source">
+              <option value="Website">Website</option>
+              <option value="Referral">Referral</option>
+              <option value="Social Media">Social Media</option>
+              <option value="Direct">Direct</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea [(ngModel)]="leadForm.notes" placeholder="Notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn cancel-btn" (click)="closeLeadModal()">Cancel</button>
+        <button class="btn add-btn" (click)="saveLead()">{{ isEditing ? 'Update' : 'Save' }}</button>
+      </div>
+    </div>
+  </div>
+</div>

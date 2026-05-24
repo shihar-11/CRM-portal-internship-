@@ -1,0 +1,139 @@
+
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: var(--bg-primary);
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.login-card {
+  background: var(--bg-secondary);
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+}
+
+.brand-icon {
+  width: 60px;
+  height: 60px;
+  background-color: rgba(0, 123, 255, 0.1);
+  color: var(--accent-color);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 20px auto;
+}
+
+.login-card h2 {
+  margin-top: 0;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 24px;
+}
+
+.login-card p {
+  color: var(--text-secondary);
+  margin-bottom: 30px;
+  font-size: 14px;
+}
+
+/* Floating Labels */
+.floating-group {
+  position: relative;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.floating-group input {
+  width: 100%;
+  padding: 16px 16px 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 15px;
+  background-color: transparent;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.floating-group label {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  pointer-events: none;
+  font-size: 15px;
+  background-color: var(--bg-secondary);
+  padding: 0 4px;
+}
+
+.floating-group input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
+}
+
+.floating-group input:focus ~ label,
+.floating-group input:not(:placeholder-shown) ~ label {
+  top: 0;
+  font-size: 12px;
+  color: var(--accent-color);
+}
+
+.error-message {
+  color: var(--danger-color);
+  background-color: rgba(220, 53, 69, 0.1);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  animation: slideDown 0.3s ease;
+}
+
+.login-button {
+  width: 100%;
+  padding: 14px;
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.login-button:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

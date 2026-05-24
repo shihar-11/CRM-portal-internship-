@@ -1,0 +1,82 @@
+<div class="split-layout">
+  <!-- Left Side: Upload Panel -->
+  <div class="panel upload-panel">
+    <div class="card-header">
+      <div class="icon-wrapper">
+        <i class="fa-solid fa-file-invoice"></i>
+      </div>
+      <h2>OCR Scanner</h2>
+      <p>Upload a resume or document to extract lead details.</p>
+    </div>
+
+    <div 
+      class="drop-zone" 
+      [class.dragover]="isDragging"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+      (click)="fileInput.click()">
+      <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+      <p *ngIf="!selectedFile">Drag and drop a PDF or Image here, or click to browse</p>
+      <p *ngIf="selectedFile" class="file-name"><i class="fa-solid fa-file"></i> {{ selectedFile.name }}</p>
+      <input type="file" #fileInput hidden accept=".pdf,.jpg,.jpeg,.png" (change)="onFileSelected($event)">
+    </div>
+
+    <button class="btn review-btn action-btn" [disabled]="!selectedFile || isExtracting" (click)="extractData()">
+      <span *ngIf="!isExtracting">Upload & Extract</span>
+      <span *ngIf="isExtracting">
+        <i class="fa-solid fa-circle-notch fa-spin"></i> Extracting data from document...
+      </span>
+    </button>
+  </div>
+
+  <!-- Right Side: Auto-filled Form -->
+  <div class="panel form-panel">
+    <div class="card-header">
+      <h2>Extracted Details</h2>
+      <p>Review the extracted information before saving.</p>
+    </div>
+
+    <form #ocrForm="ngForm" (ngSubmit)="saveLead()" class="modern-form">
+      <div class="floating-group">
+        <input type="text" id="name" name="name" [(ngModel)]="leadData.name" required #name="ngModel" 
+               [placeholder]="placeholders.name" [class.not-found]="placeholders.name !== ' '">
+        <label for="name">Full Name</label>
+      </div>
+
+      <div class="floating-group">
+        <input type="email" id="email" name="email" [(ngModel)]="leadData.email" required #email="ngModel" 
+               [placeholder]="placeholders.email" [class.not-found]="placeholders.email !== ' '">
+        <label for="email">Email Address</label>
+      </div>
+
+      <div class="floating-group">
+        <input type="text" id="phone" name="phone" [(ngModel)]="leadData.phone" 
+               [placeholder]="placeholders.phone" [class.not-found]="placeholders.phone !== ' '">
+        <label for="phone">Phone Number</label>
+      </div>
+
+      <div class="floating-group">
+        <input type="text" id="university" name="university" [(ngModel)]="leadData.university" 
+               [placeholder]="placeholders.university" [class.not-found]="placeholders.university !== ' '">
+        <label for="university">University / College</label>
+      </div>
+
+      <div class="floating-group">
+        <input type="text" id="degree" name="degree" [(ngModel)]="leadData.degree" 
+               [placeholder]="placeholders.degree" [class.not-found]="placeholders.degree !== ' '">
+        <label for="degree">Degree</label>
+      </div>
+
+      <div class="floating-group">
+        <textarea id="skills" name="skills" [(ngModel)]="leadData.skills" rows="3"
+                  [placeholder]="placeholders.skills" [class.not-found]="placeholders.skills !== ' '"></textarea>
+        <label for="skills">Skills</label>
+      </div>
+
+      <button type="submit" class="btn review-btn" [disabled]="!ocrForm.valid || !extractionComplete">
+        Save as Lead <i class="fa-solid fa-check"></i>
+      </button>
+    </form>
+  </div>
+</div>

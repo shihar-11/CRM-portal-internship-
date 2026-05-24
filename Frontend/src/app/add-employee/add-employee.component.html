@@ -1,0 +1,67 @@
+<div class="form-container">
+  <div class="form-card">
+    
+    <div class="card-header">
+      <div class="icon-wrapper">
+        <i class="fa-solid fa-user-plus"></i>
+      </div>
+      <h2>Add New Lead</h2>
+      <p>Enter the lead's contact and source details below.</p>
+    </div>
+    
+    <form #leadForm="ngForm" (ngSubmit)="review(leadForm.valid)" class="modern-form">
+      
+      <div class="floating-group">
+        <input type="text" id="name" name="name" [(ngModel)]="lead.name" required #name="ngModel" placeholder=" ">
+        <label for="name">Full Name</label>
+        <div class="validation-error" *ngIf="name.invalid && (name.dirty || name.touched)">
+          <i class="fa-solid fa-circle-exclamation"></i> Full Name is required.
+        </div>
+      </div>
+
+      <div class="floating-group">
+        <input type="email" id="email" name="email" [(ngModel)]="lead.email" required #email="ngModel" placeholder=" ">
+        <label for="email">Email Address</label>
+        <div class="validation-error" *ngIf="email.invalid && (email.dirty || email.touched)">
+          <i class="fa-solid fa-circle-exclamation"></i> A valid email is required.
+        </div>
+      </div>
+
+      <div class="floating-group">
+        <select id="status" name="status" [(ngModel)]="lead.status" required #status="ngModel" class="form-select">
+          <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+        </select>
+        <label for="status" class="select-label">Lead Status</label>
+      </div>
+
+      <div class="floating-group">
+        <select id="source" name="source" [(ngModel)]="lead.source" required #source="ngModel" class="form-select">
+          <option value="" disabled>Select a Source</option>
+          <option *ngFor="let src of sources" [value]="src">{{ src }}</option>
+        </select>
+        <label for="source" class="select-label">Lead Source</label>
+        <div class="validation-error" *ngIf="source.invalid && (source.dirty || source.touched)">
+          <i class="fa-solid fa-circle-exclamation"></i> Source is required.
+        </div>
+      </div>
+
+      <div class="floating-group">
+        <textarea id="notes" name="notes" [(ngModel)]="lead.notes" placeholder=" " rows="3"></textarea>
+        <label for="notes">Notes</label>
+      </div>
+
+      <!-- Keep Department as optional, or hide it. Let's keep it just in case. -->
+      <div class="floating-group">
+        <input type="text" id="department" name="department" [(ngModel)]="lead.department" placeholder=" ">
+        <label for="department">Department (Optional)</label>
+      </div>
+
+      <div class="action-buttons">
+        <button type="button" class="btn cancel-btn" (click)="cancel()">Cancel</button>
+        <button type="submit" class="btn review-btn" [disabled]="!leadForm.valid">
+          Review Details <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

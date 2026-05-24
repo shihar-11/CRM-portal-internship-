@@ -1,0 +1,59 @@
+.menu-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #f0f2f5;
+}
+
+.menu-card {
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.menu-card h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+.menu-card p {
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.action-btn {
+  padding: 12px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  color: white;
+}
+
+.action-btn:hover {
+  opacity: 0.9;
+}
+
+.view-btn {
+  background-color: #007bff;
+}
+
+.add-btn {
+  background-color: #28a745;
+}
+
+.logout-btn {
+  background-color: #dc3545;
+}
