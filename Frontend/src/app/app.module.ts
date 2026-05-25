@@ -13,6 +13,7 @@ import { VerifyEmployeeComponent } from './verify-employee/verify-employee.compo
 import { MainLayoutComponent } from './main-layout/main-layout.component';
 import { OcrScannerComponent } from './ocr-scanner/ocr-scanner.component';
 import { BillScannerComponent } from './bill-scanner/bill-scanner.component';
+import { AnnotationToolComponent } from './annotation-tool/annotation-tool.component';
 
 @NgModule({
   declarations: [
@@ -24,7 +25,8 @@ import { BillScannerComponent } from './bill-scanner/bill-scanner.component';
     VerifyEmployeeComponent,
     MainLayoutComponent,
     OcrScannerComponent,
-    BillScannerComponent
+    BillScannerComponent,
+    AnnotationToolComponent
   ],
   imports: [
     BrowserModule,

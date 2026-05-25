@@ -1,0 +1,256 @@
+.upload-view-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px 16px;
+}
+
+.panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+}
+
+.full-width-panel {
+  max-width: 1000px;
+  width: 100%;
+}
+
+.card-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.card-header .icon-wrapper {
+  background: rgba(0, 123, 255, 0.1);
+  color: var(--accent-color);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin: 0 auto 16px;
+}
+.card-header h2 {
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.card-header p {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.large-drop-zone {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 2px dashed var(--border-color);
+  background: var(--bg-primary);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+.large-drop-zone.dragover {
+  border-color: var(--accent-color);
+  background: rgba(0, 123, 255, 0.05);
+}
+.drop-icon {
+  font-size: 48px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+.large-drop-zone p {
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.pdf-scroll-container {
+  overflow-y: auto;
+  max-height: calc(100vh - 180px);
+  background: var(--bg-primary);
+  padding: 12px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid var(--border-color);
+}
+.pdf-page-wrapper {
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  margin: 0 auto;
+  background: white; /* PDF naturally has white background */
+}
+.annotation-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  cursor: crosshair;
+  z-index: 10;
+}
+.drawing-box {
+  position: absolute;
+  border: 2px dashed var(--accent-color);
+  background-color: rgba(0, 123, 255, 0.1);
+  pointer-events: none;
+}
+.saved-box {
+  position: absolute;
+  border: 2px solid;
+  pointer-events: none;
+}
+.box-label {
+  position: absolute;
+  top: -24px;
+  left: -2px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px 4px 4px 0;
+  white-space: nowrap;
+}
+.color-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.annotation-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.annotation-item-del {
+  background: none; border: none; color: var(--danger-color); cursor: pointer;
+  padding: 6px; border-radius: 6px;
+  transition: background 0.2s;
+}
+.annotation-item-del:hover { background: rgba(220, 53, 69, 0.1); }
+
+/* Modals */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-card {
+  background: var(--bg-secondary); padding: 32px; border-radius: 12px;
+  width: 400px; box-shadow: var(--shadow-lg);
+}
+.modal-card h3 {
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.modal-select, .modal-input {
+  width: 100%; padding: 12px; border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary); color: var(--text-primary);
+  font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+}
+.modal-select:focus, .modal-input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+}
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;
+}
+
+.dev-info-toggle {
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  color: var(--text-secondary); font-weight: 500; font-size: 14px;
+}
+.dev-info-toggle:hover { color: var(--accent-color); }
+
+.storage-info table {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.storage-info table th {
+  background: var(--bg-primary) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+.storage-info table td {
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Common form components */
+.floating-group {
+  display: flex;
+  flex-direction: column;
+}
+.floating-group label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.floating-group select {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+}
+.floating-group select:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+.btn:hover {
+  opacity: 0.9;
+}
+.btn-primary {
+  background: var(--accent-color);
+  color: white;
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-outline {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.badge {
+  background: rgba(0, 123, 255, 0.1);
+  color: var(--accent-color);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}

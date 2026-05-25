@@ -23,6 +23,10 @@
         <i class="fa-solid fa-receipt nav-icon"></i>
         <span class="nav-text" *ngIf="!isCollapsed">OCR Template Mapping</span>
       </a>
+      <a routerLink="/annotation-tool" routerLinkActive="active" class="nav-item">
+        <i class="fa-solid fa-pencil nav-icon" [ngStyle]="{'border-left': '3px solid transparent'}"></i>
+        <span class="nav-text" *ngIf="!isCollapsed">Annotation Tool</span>
+      </a>
     </nav>
 
     <div class="sidebar-footer">

@@ -13,80 +13,74 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const schema = {
   type: "object",
   properties: {
-    all_names: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          value: { type: "string" },
-          source_label: { type: "string" },
-          location_hint: { type: "string" }
-        },
-        required: ["value", "source_label"]
-      }
-    },
-    all_phones: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          value: { type: "string" },
-          source_label: { type: "string" },
-          location_hint: { type: "string" }
-        },
-        required: ["value", "source_label"]
-      }
-    },
-    all_emails: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          value: { type: "string" },
-          source_label: { type: "string" },
-          location_hint: { type: "string" }
-        },
-        required: ["value", "source_label"]
-      }
-    },
+    order_no: { type: "string" },
+    order_date: { type: "string", description: "Format DD-MM-YYYY" },
+    project_number: { type: "string" },
     project_name: { type: "string" },
-    primary_vendor_name: { type: "string" },
-    primary_contact_person: { type: "string" },
-    primary_phone: { type: "string" },
-    primary_email: { type: "string" },
-    work_order_no: { type: "string" },
-    date: { type: "string" },
-    project_no: { type: "string" },
-    address: { type: "string" },
-    line_items: {
+    order_start: { type: "string", description: "Format DD-MM-YYYY" },
+    order_end: { type: "string", description: "Format DD-MM-YYYY" },
+    billing_cycle: { type: "string", enum: ["Monthly", "Quarterly", "Yearly"] },
+    no_of_billing_cycles: { type: "number" },
+    customer: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        email: { type: "string" },
+        mobile: { type: "string" },
+        gst_number: { type: "string" },
+        pan_number: { type: "string" },
+        official_address: { type: "string" },
+        contract_state: { type: "string" },
+        website: { type: "string" }
+      }
+    },
+    contact_persons: {
       type: "array",
       items: {
         type: "object",
         properties: {
-          sno: { type: "string" },
-          hsn_sac_code: { type: "string" },
-          description: { type: "string" },
-          no_of_persons: { type: "string" },
-          required_period: { type: "string" },
-          unit_rate: { type: "string" },
-          date_from: { type: "string" },
-          date_to: { type: "string" },
-          total_amount: { type: "string" },
-          cgst_percent: { type: "string" },
-          cgst_amount: { type: "string" },
-          sgst_percent: { type: "string" },
-          sgst_amount: { type: "string" },
-          igst_percent: { type: "string" },
-          igst_amount: { type: "string" }
+          name: { type: "string" },
+          designation: { type: "string" },
+          email: { type: "string" },
+          mobile: { type: "string" }
         }
       }
     },
-    grand_total: { type: "string" }
+    resource_demand: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          job_role: { type: "string" },
+          experience: { type: "string" },
+          qty: { type: "number" },
+          start_date: { type: "string", description: "Format DD-MM-YYYY" },
+          end_date: { type: "string", description: "Format DD-MM-YYYY" },
+          unit_rate: { type: "number" },
+          billing_amount: { type: "number" }
+        }
+      }
+    },
+    billing_subscriptions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          subscription_id: { type: "string" },
+          description: { type: "string" },
+          date: { type: "string", description: "Format DD-MM-YYYY" },
+          amount: { type: "number" },
+          status: { type: "string" }
+        }
+      }
+    },
+    total_billing: { type: "number" },
+    total_subscription: { type: "number" }
   },
   required: [
-    "all_names", "all_phones", "all_emails", "project_name",
-    "primary_vendor_name", "primary_contact_person", "primary_phone", "primary_email",
-    "work_order_no", "date", "project_no", "address", "line_items", "grand_total"
+    "order_no", "order_date", "project_number", "project_name", "order_start", "order_end",
+    "billing_cycle", "no_of_billing_cycles", "customer", "contact_persons", "resource_demand",
+    "billing_subscriptions", "total_billing", "total_subscription"
   ]
 };
 
@@ -116,27 +110,13 @@ router.post('/', upload.single('document'), async (req, res) => {
 
     const prompt = `You are an expert document parser. Your task is to extract structured fields deterministically from the attached government procurement document (e.g. NICSI Work Order).
 
-Use a TWO-PHASE extraction strategy:
-
-PHASE 1 — Extract ALL candidates for each field with their source label context:
-- all_names: array of {value, source_label, location_hint}. Extract any name found in the document. Provide the label it is associated with (e.g., source_label: "Issued to → Name", "Contact Person", "Signed by", "Copy To").
-- all_phones: array of {value, source_label, location_hint}. Extract any phone numbers found.
-- all_emails: array of {value, source_label, location_hint}. Extract any email addresses found.
-- project_name: look ONLY for value after label "Project Name:-" or "Project Name:" — never confuse with person names.
-
-PHASE 2 — From the candidates, pick the PRIMARY one per field using these strict rules:
-- primary_vendor_name: pick from source_label containing "Issued to" or "Name:" under Issued to block.
-- primary_contact_person: pick from source_label "Contact Person".
-- primary_phone: pick from source_label "Phone No.:" under Issued to block — NOT footer numbers, NOT paragraph numbers.
-- primary_email: pick from source_label "Email ID:" under Issued to block — NOT cc emails, NOT nic.in emails.
-
-ALSO extract:
-- work_order_no
-- date
-- project_no
-- address
-- line_items: array of {sno, hsn_sac_code, description, no_of_persons, required_period, unit_rate, date_from, date_to, total_amount, cgst_percent, cgst_amount, sgst_percent, sgst_amount, igst_percent, igst_amount}. Map these from the main table in the document if present.
-- grand_total
+Extraction Rules:
+- All dates MUST be in DD-MM-YYYY format.
+- vendor_name from the document should be mapped to customer.name.
+- Phone numbers should only be extracted if they are near the contact person name. DO NOT extract footer phone numbers.
+- billing_subscriptions should be auto-generated from the no_of_billing_cycles count, with incremented monthly dates if billing_cycle is Monthly. For example, if no_of_billing_cycles is 3, generate 3 items with subscription_id "M 1", "M 2", "M 3" and incremented dates.
+- If a field is not found in the document, return null or an empty string.
+- Do NOT guess or hallucinate. Only extract what is explicitly present in the document.
 `;
 
     let annotationsHint = '';

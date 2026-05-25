@@ -1,0 +1,168 @@
+<div *ngIf="!selectedFile" class="upload-view-container">
+  <div class="panel upload-panel full-width-panel">
+      <div class="card-header">
+        <div class="icon-wrapper">
+          <i class="fa-solid fa-pencil"></i>
+        </div>
+        <h2>Annotation Tool</h2>
+        <p>Upload a government procurement document to annotate fields for future extraction.</p>
+      </div>
+
+    <div class="drop-zone large-drop-zone" 
+      [class.dragover]="isDragging"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+      (click)="fileInput.click()">
+      <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+      <p>Drag and drop a PDF here, or click to browse</p>
+      <input type="file" #fileInput hidden accept=".pdf" (change)="onFileSelected($event)">
+    </div>
+  </div>
+</div>
+
+<div *ngIf="selectedFile" class="results-view">
+  <div class="module-header" style="padding: 10px 0; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+    <button class="btn btn-outline" style="font-size: 13px; height: 36px; padding: 0 16px;" (click)="resetScanner()">
+      <i class="fa-solid fa-arrow-left"></i> Annotate Another Document
+    </button>
+    <div style="width: 200px;"></div>
+  </div>
+
+  <div class="split-layout" style="padding-top: 0; display: flex;">
+    <div style="display: flex; gap: 24px; align-items: stretch; flex-direction: column; flex: 1;">
+      
+      <!-- TOP: PDF Canvas -->
+      <div class="panel upload-panel" style="flex: 1; display: flex; flex-direction: column;">
+      
+        <div class="pdf-scroll-container">
+          <div *ngFor="let page of pdfPages; let i = index" class="pdf-page-wrapper">
+            <canvas [id]="'pdf-canvas-' + (i + 1)" class="pdf-canvas"></canvas>
+            <div class="annotation-overlay"
+                 (mousedown)="onMouseDown($event, i + 1)"
+                 (mousemove)="onMouseMove($event, i + 1)"
+                 (mouseup)="onMouseUp($event, i + 1)"
+                 (mouseleave)="onMouseLeave($event)">
+              
+              <!-- Live Drawing Box -->
+              <div *ngIf="isDrawing && drawingPage === (i + 1)" 
+                   class="drawing-box"
+                   [style.left.px]="drawingBox.x"
+                   [style.top.px]="drawingBox.y"
+                   [style.width.px]="drawingBox.width"
+                   [style.height.px]="drawingBox.height">
+              </div>
+
+              <!-- Saved Annotations for this page -->
+              <div *ngFor="let ann of getAnnotationsForPage(i + 1)"
+                   class="saved-box"
+                   [style.left.px]="ann.coordinates.x"
+                   [style.top.px]="ann.coordinates.y"
+                   [style.width.px]="ann.coordinates.width"
+                   [style.height.px]="ann.coordinates.height"
+                   [style.border-color]="ann.color"
+                   [style.background-color]="ann.color + '33'">
+                 <div class="box-label" [style.background-color]="ann.color">{{ ann.field_name }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM: Annotation Controls Panel -->
+      <div class="panel form-panel" style="flex: none;">
+        <div style="text-align: left; margin-bottom: 24px;">
+          <h2 style="font-size: 20px; color: var(--text-primary); font-weight: 600; margin-bottom: 8px;">Annotation Controls</h2>
+          <p style="font-size: 14px; color: var(--text-secondary);">Draw boxes on the PDF preview to map fields to their locations. These hints improve future extractions.</p>
+        </div>
+
+        <div class="floating-group" style="margin-bottom: 24px;">
+          <label for="document_type">Document Template Type:</label>
+          <select id="document_type" [(ngModel)]="documentType">
+            <option value="work_order">Work Order</option>
+            <option value="purchase_order">Purchase Order</option>
+            <option value="invoice">Invoice</option>
+            <option value="custom">Custom Template</option>
+          </select>
+        </div>
+
+        <div class="annotations-list" style="margin-top: 0; padding-top: 0; border: none;" *ngIf="annotations.length > 0">
+          <h4 style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            Saved Annotations
+            <span class="badge">{{ annotations.length }} annotations saved</span>
+          </h4>
+          <div class="annotation-item" *ngFor="let ann of annotations; let i = index">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="color-dot" [style.background-color]="ann.color"></span>
+              <span><strong>{{ ann.field_name }}</strong> (Page {{ ann.page_number }})</span>
+            </div>
+            <button class="annotation-item-del" (click)="removeAnnotation(i)"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="margin-top: auto; padding: 14px; font-size: 15px; width: 100%;" [disabled]="annotations.length === 0 || isSavingAnnotations" (click)="saveMappings()">
+          <span *ngIf="!isSavingAnnotations && !isTestSuccessful">Save Training Data</span>
+          <span *ngIf="isSavingAnnotations"><i class="fa-solid fa-circle-notch fa-spin"></i> Saving...</span>
+          <span *ngIf="isTestSuccessful"><i class="fa-solid fa-check-circle"></i> Saved!</span>
+        </button>
+
+        <div class="storage-info" *ngIf="annotations.length > 0" style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <div class="dev-info-toggle" (click)="showStorageInfo = !showStorageInfo">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              Developer Info <i class="fa-solid" [class.fa-chevron-down]="showStorageInfo" [class.fa-chevron-right]="!showStorageInfo"></i>
+            </div>
+            <i class="fa-solid fa-circle-info" style="cursor: help; color: var(--text-secondary); font-size: 14px;" 
+               title="Normalized % values are sent to Gemini as spatial hints. PDF units are scale-independent coordinates."></i>
+          </div>
+          <div style="overflow-x: auto;" *ngIf="showStorageInfo">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; background: var(--bg-secondary); border-radius: 8px; overflow: hidden; margin-top: 12px; border: 1px solid var(--border-color);">
+              <thead style="background: var(--bg-primary); border-bottom: 1px solid var(--border-color);">
+                <tr>
+                  <th style="padding: 8px;">Field</th>
+                  <th style="padding: 8px;">Pg</th>
+                  <th style="padding: 8px;">Canvas px</th>
+                  <th style="padding: 8px;">Normalized %</th>
+                  <th style="padding: 8px;">Scale</th>
+                  <th style="padding: 8px;">PDF units</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let ann of annotations" style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 8px; font-weight: 500;">{{ ann.field_name }}</td>
+                  <td style="padding: 8px;">{{ ann.page_number }}</td>
+                  <td style="padding: 8px;">{{ '{' }}x: {{ ann.coordinates.x | number:'1.0-0' }}, y: {{ ann.coordinates.y | number:'1.0-0' }}, w: {{ ann.coordinates.width | number:'1.0-0' }}, h: {{ ann.coordinates.height | number:'1.0-0' }}{{ '}' }}</td>
+                  <td style="padding: 8px;">{{ '{' }}x: {{ ann.normalized.x_pct | number:'1.1-1' }}%, y: {{ ann.normalized.y_pct | number:'1.1-1' }}%, w: {{ ann.normalized.w_pct | number:'1.1-1' }}%, h: {{ ann.normalized.h_pct | number:'1.1-1' }}%{{ '}' }}</td>
+                  <td style="padding: 8px;">1.5</td>
+                  <td style="padding: 8px; color: #6b7280;">{{ '{' }}x: {{ (ann.coordinates.x / 1.5) | number:'1.0-0' }}, y: {{ (ann.coordinates.y / 1.5) | number:'1.0-0' }}, w: {{ (ann.coordinates.width / 1.5) | number:'1.0-0' }}, h: {{ (ann.coordinates.height / 1.5) | number:'1.0-0' }}{{ '}' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Field Labeling Modal -->
+<div class="modal-overlay" *ngIf="showLabelModal">
+  <div class="modal-card">
+    <h3>Label Field</h3>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">Select the field this bounding box represents.</p>
+    
+    <select class="modal-select" [(ngModel)]="selectedLabel" (change)="onLabelSelectChange()">
+      <option value="" disabled selected>Select a field...</option>
+      <option *ngFor="let opt of labelOptions" [value]="opt">{{ opt }}</option>
+    </select>
+    
+    <div *ngIf="selectedLabel === 'Other'" style="margin-top: 12px;">
+      <input type="text" class="modal-input" placeholder="Enter custom field name" [(ngModel)]="customLabel">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-outline" (click)="cancelAnnotation()">Cancel</button>
+      <button class="btn btn-primary" [disabled]="!selectedLabel || (selectedLabel === 'Other' && !customLabel)" (click)="confirmAnnotation()">Confirm</button>
+    </div>
+  </div>
+</div>

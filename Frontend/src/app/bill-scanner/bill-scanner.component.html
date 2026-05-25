@@ -1,356 +1,321 @@
-<!-- VIEW 1: UPLOAD PAGE -->
-<div *ngIf="currentView === 'upload'" class="upload-view-container">
-  <div class="panel upload-panel full-width-panel">
-    <div class="card-header">
-      <div class="icon-wrapper">
-        <i class="fa-solid fa-receipt"></i>
+<div class="wizard-container">
+  <!-- Stepper Header -->
+  <div class="stepper-header">
+    <div class="step" [class.completed]="currentStep > 1" [class.active]="currentStep === 1">
+      <div class="step-circle">
+        <i *ngIf="currentStep > 1" class="fa-solid fa-check"></i>
+        <span *ngIf="currentStep <= 1">1</span>
       </div>
-      <h2>OCR Template Mapping</h2>
-      <p>Upload a government procurement document to extract structured fields.</p>
+      <div class="step-label">Type</div>
     </div>
-
-    <div class="drop-zone large-drop-zone" 
-      [class.dragover]="isDragging"
-      (dragover)="onDragOver($event)"
-      (dragleave)="onDragLeave($event)"
-      (drop)="onDrop($event)"
-      (click)="fileInput.click()">
-      <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
-      <p *ngIf="!selectedFile">Drag and drop a PDF or Image here, or click to browse</p>
-      <p *ngIf="selectedFile" class="file-name"><i class="fa-solid fa-file"></i> {{ selectedFile.name }}</p>
-      <input type="file" #fileInput hidden accept=".pdf,.jpg,.jpeg,.png" (change)="onFileSelected($event)">
+    <div class="step-line" [class.completed-line]="currentStep > 1"></div>
+    <div class="step" [class.completed]="currentStep > 2" [class.active]="currentStep === 2">
+      <div class="step-circle">
+        <i *ngIf="currentStep > 2" class="fa-solid fa-check"></i>
+        <span *ngIf="currentStep <= 2">2</span>
+      </div>
+      <div class="step-label">Upload Document</div>
     </div>
-
-    <button class="btn review-btn action-btn full-width-btn" [disabled]="!selectedFile || isExtracting" (click)="extractData()">
-      <span *ngIf="!isExtracting">Scan Document</span>
-      <span *ngIf="isExtracting">
-        <i class="fa-solid fa-circle-notch fa-spin"></i> Extracting data from document...
-      </span>
-    </button>
-  </div>
-</div>
-
-<!-- VIEW 2: RESULTS PAGE -->
-<div *ngIf="currentView === 'results'" class="results-view">
-  
-  <div class="module-header" style="padding: 20px 20px 0; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
-    <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); font-size: 13px; height: 36px; padding: 0 16px;" (click)="resetScanner()">
-      <i class="fa-solid fa-arrow-left"></i> Scan Another Document
-    </button>
-    <div class="pill-toggle">
-      <button [class.active]="activeTab === 'extracted'" (click)="switchTab('extracted')">
-        <i class="fa-solid fa-check"></i> Extracted Info
-      </button>
-      <button [class.active]="activeTab === 'annotation'" (click)="switchTab('annotation')">
-        <i class="fa-solid fa-pencil"></i> Annotation Mode
-      </button>
+    <div class="step-line" [class.completed-line]="currentStep > 2"></div>
+    <div class="step" [class.completed]="currentStep > 3" [class.active]="currentStep === 3">
+      <div class="step-circle">
+        <i *ngIf="currentStep > 3" class="fa-solid fa-check"></i>
+        <span *ngIf="currentStep <= 3">3</span>
+      </div>
+      <div class="step-label">Customer & Contact</div>
     </div>
-    <div style="width: 200px;"></div>
+    <div class="step-line" [class.completed-line]="currentStep > 3"></div>
+    <div class="step" [class.completed]="currentStep > 4" [class.active]="currentStep === 4">
+      <div class="step-circle">
+        <i *ngIf="currentStep > 4" class="fa-solid fa-check"></i>
+        <span *ngIf="currentStep <= 4">4</span>
+      </div>
+      <div class="step-label">Resource Demand</div>
+    </div>
   </div>
 
-  <!-- TAB 2: ANNOTATION MODE -->
-  <!-- Using [style.display] because .split-layout sets display: flex which overrides the native [hidden] attribute -->
-  <div [style.display]="activeTab === 'annotation' ? 'flex' : 'none'" class="split-layout" style="padding-top: 0;">
-    <div style="display: flex; gap: 24px; align-items: stretch; flex-direction: column; flex: 1;">
-      
-      <!-- TOP: PDF Canvas -->
-      <div class="panel upload-panel" style="flex: 1; display: flex; flex-direction: column;">
-      
-      <div class="pdf-scroll-container">
-        <div *ngFor="let page of pdfPages; let i = index" class="pdf-page-wrapper">
-          <canvas [id]="'pdf-canvas-' + (i + 1)" class="pdf-canvas"></canvas>
-          <div class="annotation-overlay"
-               (mousedown)="onMouseDown($event, i + 1)"
-               (mousemove)="onMouseMove($event, i + 1)"
-               (mouseup)="onMouseUp($event, i + 1)"
-               (mouseleave)="onMouseLeave($event)">
-            
-            <!-- Live Drawing Box -->
-            <div *ngIf="isDrawing && drawingPage === (i + 1)" 
-                 class="drawing-box"
-                 [style.left.px]="drawingBox.x"
-                 [style.top.px]="drawingBox.y"
-                 [style.width.px]="drawingBox.width"
-                 [style.height.px]="drawingBox.height">
-            </div>
+  <div class="wizard-card panel">
+    <div class="step-content-container">
 
-            <!-- Saved Annotations for this page -->
-            <div *ngFor="let ann of getAnnotationsForPage(i + 1)"
-                 class="saved-box"
-                 [style.left.px]="ann.coordinates.x"
-                 [style.top.px]="ann.coordinates.y"
-                 [style.width.px]="ann.coordinates.width"
-                 [style.height.px]="ann.coordinates.height"
-                 [style.border-color]="ann.color"
-                 [style.background-color]="ann.color + '33'">
-               <div class="box-label" [style.background-color]="ann.color">{{ ann.field_name }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      </div>
-
-      <!-- BOTTOM: Annotation Controls Panel -->
-      <div class="panel form-panel" style="flex: none;">
-        <div class="card-header" style="text-align: left; margin-bottom: 24px;">
-          <h2 style="font-size: 20px;">Annotation Controls</h2>
-          <p style="font-size: 14px; margin-top: 4px;">Draw boxes on the PDF preview to map fields to their locations. These hints improve future extractions.</p>
-        </div>
-
-        <div class="floating-group" style="margin-bottom: 24px;">
-          <select id="document_type" [(ngModel)]="documentType" style="width: 100%; padding: 16px 16px 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary); color: var(--text-primary); font-size: 15px;">
-            <option value="work_order">Work Order</option>
-            <option value="purchase_order">Purchase Order</option>
-            <option value="invoice">Invoice</option>
-            <option value="custom">Custom Template</option>
-          </select>
-          <label for="document_type" style="top: 0; font-size: 12px; color: var(--accent-color);">Document Template Type:</label>
-        </div>
-
-        <div class="annotations-list" style="margin-top: 0; padding-top: 0; border: none;" *ngIf="annotations.length > 0">
-          <h4 style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-            Saved Annotations
-            <span class="badge">{{ annotations.length }} annotations saved</span>
-          </h4>
-          <div class="annotation-item" *ngFor="let ann of annotations; let i = index">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="color-dot" [style.background-color]="ann.color"></span>
-              <span><strong>{{ ann.field_name }}</strong> (Page {{ ann.page_number }})</span>
-            </div>
-            <button class="annotation-item-del" (click)="removeAnnotation(i)"><i class="fa-solid fa-trash"></i></button>
+      <!-- STEP 1: TYPE -->
+      <div *ngIf="currentStep === 1" class="step-content">
+        <div class="section-title" style="margin-bottom: 24px; border: none; padding: 0;">Select Document Type</div>
+        
+        <div class="type-cards-grid">
+          <div class="type-card" *ngFor="let type of documentTypes" 
+               [class.selected]="orderData.document_type === type.id"
+               (click)="selectType(type.id)">
+            <i class="fa-solid {{type.icon}} type-icon"></i>
+            <span>{{ type.label }}</span>
           </div>
         </div>
 
-        <button class="btn review-btn action-btn" style="margin-top: auto; padding: 16px; font-size: 16px;" [disabled]="annotations.length === 0 || isSavingAnnotations" (click)="saveMappings()">
-          <span *ngIf="!isSavingAnnotations && !isTestSuccessful">Save Training Data & Test</span>
-          <span *ngIf="isSavingAnnotations"><i class="fa-solid fa-circle-notch fa-spin"></i> Saving...</span>
-          <span *ngIf="isTestSuccessful" style="color: #4ade80;"><i class="fa-solid fa-check-circle"></i> Saved! Running extraction test...</span>
+        <div class="nav-bar">
+          <div></div>
+          <button class="btn btn-primary" (click)="nextStep()">Next &gt;</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: UPLOAD DOCUMENT -->
+      <div *ngIf="currentStep === 2" class="step-content">
+        <div class="section-title" style="margin-bottom: 24px; border: none; padding: 0;">Upload Document</div>
+
+        <div class="drop-zone" 
+          [class.dragover]="isDragging"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+          (click)="fileInput.click()">
+          <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+          <div class="drop-text" *ngIf="!selectedFile">Drag & Drop PDF or Image here</div>
+          <div class="file-name" *ngIf="selectedFile">
+            <i class="fa-solid fa-file-pdf"></i>
+            {{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(2) }} KB)
+          </div>
+          <button class="btn btn-browse" style="margin-top: 16px;">Browse File</button>
+          <input type="file" #fileInput hidden accept=".pdf,.jpg,.jpeg,.png" (change)="onFileSelected($event)">
+        </div>
+        
+        <button class="btn btn-primary full-width-btn" style="margin-top: 24px;" [disabled]="!selectedFile || isExtracting" (click)="scanDocument()">
+          <span *ngIf="!isExtracting">Scan Document</span>
+          <span *ngIf="isExtracting">
+            <i class="fa-solid fa-circle-notch fa-spin"></i> Scanning document...
+          </span>
         </button>
 
-        <!-- Storage Info Debug Panel -->
-        <div class="storage-info" *ngIf="annotations.length > 0" style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-          <div class="section-title dev-info-toggle" (click)="showStorageInfo = !showStorageInfo">
-            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600;">
-              Developer Info <i class="fa-solid" [class.fa-chevron-down]="showStorageInfo" [class.fa-chevron-right]="!showStorageInfo"></i>
-            </div>
-            <i class="fa-solid fa-circle-info" style="cursor: help; color: var(--accent-color); font-size: 14px;" 
-               title="Normalized % values are sent to Gemini as spatial hints. PDF units are scale-independent coordinates."></i>
-          </div>
-          <div style="overflow-x: auto;" *ngIf="showStorageInfo">
-            <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; background: var(--bg-secondary); border-radius: 8px; overflow: hidden; margin-top: 12px;">
-              <thead style="background: rgba(0,0,0,0.1);">
-                <tr>
-                  <th style="padding: 8px;">Field</th>
-                  <th style="padding: 8px;">Pg</th>
-                  <th style="padding: 8px;">Canvas px</th>
-                  <th style="padding: 8px;">Normalized %</th>
-                  <th style="padding: 8px;">Scale</th>
-                  <th style="padding: 8px;">PDF units</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let ann of annotations" style="border-bottom: 1px solid var(--border-color);">
-                  <td style="padding: 8px; font-weight: 500;">{{ ann.field_name }}</td>
-                  <td style="padding: 8px;">{{ ann.page_number }}</td>
-                  <td style="padding: 8px;">{{ '{' }}x: {{ ann.coordinates.x | number:'1.0-0' }}, y: {{ ann.coordinates.y | number:'1.0-0' }}, w: {{ ann.coordinates.width | number:'1.0-0' }}, h: {{ ann.coordinates.height | number:'1.0-0' }}{{ '}' }}</td>
-                  <td style="padding: 8px;">{{ '{' }}x: {{ ann.normalized.x_pct | number:'1.1-1' }}%, y: {{ ann.normalized.y_pct | number:'1.1-1' }}%, w: {{ ann.normalized.w_pct | number:'1.1-1' }}%, h: {{ ann.normalized.h_pct | number:'1.1-1' }}%{{ '}' }}</td>
-                  <td style="padding: 8px;">1.5</td>
-                  <td style="padding: 8px; color: var(--text-secondary);">{{ '{' }}x: {{ (ann.coordinates.x / 1.5) | number:'1.0-0' }}, y: {{ (ann.coordinates.y / 1.5) | number:'1.0-0' }}, w: {{ (ann.coordinates.width / 1.5) | number:'1.0-0' }}, h: {{ (ann.coordinates.height / 1.5) | number:'1.0-0' }}{{ '}' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="nav-bar">
+          <button class="btn btn-previous" (click)="prevStep()">&lt; Previous</button>
+          <button class="btn btn-primary" (click)="nextStep()">Skip &gt;</button>
         </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 1: EXTRACTED INFO -->
-  <div *ngIf="activeTab === 'extracted'" class="panel form-panel" style="margin: 0 20px 20px 20px;">
-    <div class="card-header">
-      <h2>Extracted Details</h2>
-      <p>Review the extracted information before saving.</p>
-    </div>
-
-    <form [formGroup]="billForm" (ngSubmit)="saveAsLead()" class="modern-form">
-      
-      <!-- SECTION 1: Document Header Fields -->
-      <div class="section-title">Document Header Fields</div>
-      
-      <div class="floating-group">
-        <input type="text" id="work_order_no" formControlName="work_order_no" 
-               [placeholder]="isNullOrEmpty('work_order_no') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('work_order_no')">
-        <label for="work_order_no">Work Order No</label>
       </div>
 
-      <div class="floating-group">
-        <input type="text" id="date" formControlName="date" 
-               [placeholder]="isNullOrEmpty('date') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('date')">
-        <label for="date">Date</label>
-      </div>
-
-      <div class="floating-group">
-        <input type="text" id="project_no" formControlName="project_no" 
-               [placeholder]="isNullOrEmpty('project_no') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('project_no')">
-        <label for="project_no">Project No</label>
-      </div>
-
-      <div class="floating-group">
-        <input type="text" id="project_name" formControlName="project_name" 
-               [placeholder]="isNullOrEmpty('project_name') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('project_name')">
-        <label for="project_name">Project Name</label>
-      </div>
-
-      <div class="floating-group">
-        <input type="text" id="primary_vendor_name" formControlName="primary_vendor_name" 
-               [placeholder]="isNullOrEmpty('primary_vendor_name') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('primary_vendor_name')">
-        <label for="primary_vendor_name">Vendor Name</label>
-      </div>
-
-      <div class="floating-group">
-        <input type="text" id="primary_contact_person" formControlName="primary_contact_person" 
-               [placeholder]="isNullOrEmpty('primary_contact_person') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('primary_contact_person')">
-        <label for="primary_contact_person">Contact Person</label>
-      </div>
-
-      <div class="floating-group">
-        <input type="text" id="address" formControlName="address" 
-               [placeholder]="isNullOrEmpty('address') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('address')">
-        <label for="address">Address</label>
-      </div>
-
-      <div class="floating-group">
-        <input type="text" id="primary_phone" formControlName="primary_phone" 
-               [placeholder]="isNullOrEmpty('primary_phone') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('primary_phone')">
-        <label for="primary_phone">Phone Number</label>
-      </div>
-
-      <div class="floating-group">
-        <input type="text" id="primary_email" formControlName="primary_email" 
-               [placeholder]="isNullOrEmpty('primary_email') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('primary_email')">
-        <label for="primary_email">Email</label>
-      </div>
-
-      <!-- SECTION 2: Candidate Review Panel -->
-      <div class="section-title">
-        Candidate Review Panel
-        <button type="button" class="toggle-btn" (click)="toggleCandidates()">
-          {{ showCandidates ? 'Hide' : 'Show' }}
-        </button>
-      </div>
-      
-      <div class="candidates-panel" *ngIf="showCandidates">
-        <div class="candidate-list" *ngIf="candidates.all_names.length > 0">
-          <h4>Candidate Names</h4>
-          <div class="chips">
-            <div class="chip" *ngFor="let name of candidates.all_names">
-              <span class="chip-val">{{ name.value }}</span>
-              <span class="chip-source">{{ name.source_label }}</span>
-              <button type="button" class="chip-btn" (click)="candidateOverride('primary_vendor_name', name.value)">Use as Vendor</button>
-              <button type="button" class="chip-btn" (click)="candidateOverride('primary_contact_person', name.value)">Use as Contact</button>
+      <!-- STEP 3: CUSTOMER & CONTACT -->
+      <div *ngIf="currentStep === 3" class="step-content">
+        
+        <div class="order-details-section">
+          <div class="section-title collapsible-header" (click)="toggleOrderDetails()">
+            Order Details <i class="fa-solid" [class.fa-chevron-down]="!showOrderDetails" [class.fa-chevron-up]="showOrderDetails"></i>
+          </div>
+          <div class="collapsible-content" *ngIf="showOrderDetails">
+            <div class="two-column-grid">
+              <div class="floating-group">
+                <label>Order No</label>
+                <input type="text" [(ngModel)]="orderData.order_no">
+              </div>
+              <div class="floating-group">
+                <label>Order Date</label>
+                <input type="text" [(ngModel)]="orderData.order_date">
+              </div>
+              <div class="floating-group">
+                <label>Project Number</label>
+                <input type="text" [(ngModel)]="orderData.project_number">
+              </div>
+              <div class="floating-group">
+                <label>Project Name</label>
+                <input type="text" [(ngModel)]="orderData.project_name">
+              </div>
+              <div class="floating-group">
+                <label>Order Start</label>
+                <input type="text" [(ngModel)]="orderData.order_start">
+              </div>
+              <div class="floating-group">
+                <label>Order End</label>
+                <input type="text" [(ngModel)]="orderData.order_end">
+              </div>
+            </div>
+            <div class="billing-cycle-box">
+              <div class="floating-group" style="margin-bottom: 0; flex: 1;">
+                <label>Billing Cycle</label>
+                <select [(ngModel)]="orderData.billing_cycle">
+                  <option *ngFor="let c of billingCycles" [value]="c">{{ c }}</option>
+                </select>
+              </div>
+              <div class="floating-group" style="margin-bottom: 0; flex: 1;">
+                <label>No. of Billing Cycles <span class="badge badge-auto">Auto</span></label>
+                <input type="number" [(ngModel)]="orderData.no_of_billing_cycles" (change)="generateSubscriptions()">
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="candidate-list" *ngIf="candidates.all_phones.length > 0">
-          <h4>Candidate Phones</h4>
-          <div class="chips">
-            <div class="chip" *ngFor="let phone of candidates.all_phones">
-              <span class="chip-val">{{ phone.value }}</span>
-              <span class="chip-source">{{ phone.source_label }}</span>
-              <button type="button" class="chip-btn" (click)="candidateOverride('primary_phone', phone.value)">Use this</button>
+        <div class="section-title" style="margin-top: 32px;">Customer & Contact Details</div>
+        
+        <div class="sub-tabs">
+          <button [class.active]="customerTab === 'new'" (click)="customerTab = 'new'">New Customer</button>
+          <button [class.active]="customerTab === 'existing'" (click)="customerTab = 'existing'">Existing Customer</button>
+        </div>
+
+        <div *ngIf="customerTab === 'existing'" class="floating-group search-group" style="margin-bottom: 24px;">
+          <label style="position: static; font-size: 13px; margin-bottom: 6px; display: block;">Search Customer</label>
+          <div class="input-with-icon">
+            <i class="fa-solid fa-search search-icon"></i>
+            <input type="text" [(ngModel)]="searchQuery" (input)="searchExistingCustomer()" placeholder="Enter name or ID" style="padding-left: 36px;">
+          </div>
+        </div>
+
+        <div class="blue-label">Customer Information</div>
+        <div class="two-column-grid">
+          <div class="floating-group col-span-2">
+            <label>Customer Name <span class="required">*</span></label>
+            <input type="text" [(ngModel)]="orderData.customer.name">
+          </div>
+          <div class="floating-group">
+            <label>Email</label>
+            <input type="text" [(ngModel)]="orderData.customer.email">
+          </div>
+          <div class="floating-group">
+            <label>Mobile/Phone</label>
+            <input type="text" [(ngModel)]="orderData.customer.mobile">
+          </div>
+          <div class="floating-group">
+            <label>GST Number</label>
+            <input type="text" [(ngModel)]="orderData.customer.gst_number">
+          </div>
+          <div class="floating-group">
+            <label>PAN Number</label>
+            <input type="text" [(ngModel)]="orderData.customer.pan_number">
+          </div>
+          <div class="floating-group col-span-2">
+            <label>Official Address</label>
+            <textarea [(ngModel)]="orderData.customer.official_address" rows="2"></textarea>
+          </div>
+          <div class="floating-group">
+            <label>Contract State <span class="required">*</span></label>
+            <select [(ngModel)]="orderData.customer.contract_state">
+              <option value="">Select State</option>
+              <option *ngFor="let s of states" [value]="s">{{ s }}</option>
+            </select>
+          </div>
+          <div class="floating-group">
+            <label>Website</label>
+            <input type="text" [(ngModel)]="orderData.customer.website">
+          </div>
+        </div>
+
+        <div class="blue-label" style="margin-top: 16px;">Contact Persons</div>
+        <div class="contact-box" *ngFor="let contact of orderData.contact_persons; let i = index">
+          <div class="contact-header">
+            <span>Primary Contact</span>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-sm btn-outline" (click)="newContact(i)">New</button>
+              <button class="btn btn-sm btn-outline" (click)="editContact(i)">Edit</button>
+            </div>
+          </div>
+          <div class="two-column-grid">
+            <div class="floating-group">
+              <label>Name <span class="required">*</span></label>
+              <input type="text" [(ngModel)]="contact.name" [disabled]="!contact.isNew">
+            </div>
+            <div class="floating-group">
+              <label>Designation</label>
+              <input type="text" [(ngModel)]="contact.designation" [disabled]="!contact.isNew">
+            </div>
+            <div class="floating-group">
+              <label>Email <span class="required">*</span></label>
+              <input type="text" [(ngModel)]="contact.email" [disabled]="!contact.isNew">
+            </div>
+            <div class="floating-group">
+              <label>Mobile/Phone <span class="required">*</span></label>
+              <input type="text" [(ngModel)]="contact.mobile" [disabled]="!contact.isNew">
             </div>
           </div>
         </div>
 
-        <div class="candidate-list" *ngIf="candidates.all_emails.length > 0">
-          <h4>Candidate Emails</h4>
-          <div class="chips">
-            <div class="chip" *ngFor="let email of candidates.all_emails">
-              <span class="chip-val">{{ email.value }}</span>
-              <span class="chip-source">{{ email.source_label }}</span>
-              <button type="button" class="chip-btn" (click)="candidateOverride('primary_email', email.value)">Use this</button>
-            </div>
+        <div class="nav-bar">
+          <button class="btn btn-previous" (click)="prevStep()">&lt; Previous</button>
+          <button class="btn btn-primary" (click)="nextStep()">Next &gt;</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: RESOURCE DEMAND -->
+      <div *ngIf="currentStep === 4" class="step-content">
+        
+        <div class="flex-between">
+          <div class="section-title" style="margin-bottom: 0;">Qty of Resource Demand</div>
+          <button class="btn btn-dark-action" (click)="addDemand()"><i class="fa-solid fa-plus"></i> Add Demand</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="40"></th>
+                <th>Job Role</th>
+                <th>Exp</th>
+                <th width="60">Qty</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Unit Rate</th>
+                <th>Billing Amt</th>
+                <th width="60">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let d of orderData.resource_demand; let i = index">
+                <td><input type="checkbox" class="styled-checkbox" [(ngModel)]="d.checked" (change)="calculateTotals()"></td>
+                <td><input type="text" [(ngModel)]="d.job_role" class="table-input"></td>
+                <td><input type="text" [(ngModel)]="d.experience" class="table-input"></td>
+                <td><input type="number" [(ngModel)]="d.qty" class="table-input" (change)="calculateDemandBilling(i)"></td>
+                <td><input type="text" [(ngModel)]="d.start_date" class="table-input" placeholder="DD-MM-YYYY"></td>
+                <td><input type="text" [(ngModel)]="d.end_date" class="table-input" placeholder="DD-MM-YYYY"></td>
+                <td><input type="number" [(ngModel)]="d.unit_rate" class="table-input" (change)="calculateDemandBilling(i)"></td>
+                <td style="color: #e2e8f0; font-weight: 500;">₹{{ d.billing_amount | number:'1.2-2' }}</td>
+                <td class="action-cell">
+                  <i class="fa-solid fa-pen text-blue"></i>
+                  <i class="fa-solid fa-trash text-red" (click)="removeDemand(i)"></i>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="total-row">Total Billing: ₹{{ orderData.total_billing | number:'1.2-2' }}</div>
+        </div>
+
+        <div class="section-title" style="margin-top: 32px;">Billing Subscription Details</div>
+        
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="40"></th>
+                <th>Subscription</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th width="60">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let sub of orderData.billing_subscriptions; let i = index">
+                <td><input type="checkbox" class="styled-checkbox" [(ngModel)]="sub.checked" (change)="calculateTotals()"></td>
+                <td><input type="text" [(ngModel)]="sub.subscription_id" class="table-input"></td>
+                <td><input type="text" [(ngModel)]="sub.description" class="table-input"></td>
+                <td><input type="text" [(ngModel)]="sub.date" class="table-input" placeholder="DD-MM-YYYY"></td>
+                <td><input type="number" [(ngModel)]="sub.amount" class="table-input" (change)="calculateTotals()"></td>
+                <td><span class="badge-pending">{{ sub.status }}</span></td>
+                <td class="action-cell">
+                  <i class="fa-solid fa-trash text-red" (click)="removeSubscription(i)"></i>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="total-row" style="display: flex; justify-content: flex-end; gap: 32px;">
+            <span>Total Billing: ₹{{ orderData.total_billing | number:'1.2-2' }}</span>
+            <span>Total Subscription: ₹{{ orderData.total_subscription | number:'1.2-2' }}</span>
           </div>
         </div>
-      </div>
+        <a href="javascript:void(0)" class="add-row-link" (click)="addSubscription()">+ Add Row</a>
 
-      <!-- SECTION 3: Line Items Table -->
-      <div class="section-title">Line Items</div>
-      <div class="table-responsive" *ngIf="lineItems.length > 0">
-        <table class="line-items-table">
-          <thead>
-            <tr>
-              <th>SNo</th>
-              <th>Description</th>
-              <th>Qty/Persons</th>
-              <th>Unit Rate</th>
-              <th>Total Amount</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody formArrayName="line_items">
-            <tr *ngFor="let item of lineItems.controls; let i = index" [formGroupName]="i">
-              <td><input type="text" formControlName="sno"></td>
-              <td><input type="text" formControlName="description"></td>
-              <td><input type="text" formControlName="no_of_persons"></td>
-              <td><input type="text" formControlName="unit_rate"></td>
-              <td><input type="text" formControlName="total_amount"></td>
-              <td><button type="button" class="btn" style="padding: 4px; font-size: 12px; background: #dc3545;" (click)="removeLineItem(i)"><i class="fa-solid fa-trash"></i></button></td>
-            </tr>
-          </tbody>
-        </table>
-        <div style="margin-top: 12px;">
-          <button type="button" class="btn" style="padding: 8px 16px; font-size: 12px; background: var(--bg-secondary); border: 1px solid var(--border-color);" (click)="addLineItem()">+ Add Row</button>
+        <div class="nav-bar">
+          <button class="btn btn-cancel" (click)="cancelOrder()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+          <div style="display: flex; gap: 16px;">
+            <button class="btn btn-previous" (click)="prevStep()">&lt; Previous</button>
+            <button class="btn btn-success" (click)="saveOrder()">Save Order <i class="fa-solid fa-check" style="margin-left: 6px;"></i></button>
+          </div>
         </div>
-      </div>
-      <div *ngIf="lineItems.length === 0" style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
-        No line items extracted.
+
       </div>
 
-      <div class="floating-group">
-        <input type="text" id="grand_total" formControlName="grand_total" 
-               [placeholder]="isNullOrEmpty('grand_total') ? 'Not found in document' : ' '" 
-               [class.not-found]="isNullOrEmpty('grand_total')">
-        <label for="grand_total">Grand Total</label>
-      </div>
-
-      <button type="submit" class="btn review-btn" [disabled]="!billForm.valid || !extractionComplete">
-        Save as Lead <i class="fa-solid fa-check"></i>
-      </button>
-    </form>
-  </div>
-</div>
-
-<!-- Field Labeling Modal -->
-<div class="modal-overlay" *ngIf="showLabelModal">
-  <div class="modal-card">
-    <h3>Label Field</h3>
-    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">Select the field this bounding box represents.</p>
-    
-    <select class="modal-select" [(ngModel)]="selectedLabel" (change)="onLabelSelectChange()">
-      <option value="" disabled selected>Select a field...</option>
-      <option *ngFor="let opt of labelOptions" [value]="opt">{{ opt }}</option>
-    </select>
-    
-    <div *ngIf="selectedLabel === 'Other'" style="margin-top: 12px;">
-      <input type="text" class="modal-input" placeholder="Enter custom field name" [(ngModel)]="customLabel">
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" (click)="cancelAnnotation()">Cancel</button>
-      <button class="btn review-btn" [disabled]="!selectedLabel || (selectedLabel === 'Other' && !customLabel)" (click)="confirmAnnotation()">Confirm</button>
     </div>
   </div>
 </div>

@@ -7,6 +7,7 @@ import { VerifyEmployeeComponent } from './verify-employee/verify-employee.compo
 import { MainLayoutComponent } from './main-layout/main-layout.component';
 import { OcrScannerComponent } from './ocr-scanner/ocr-scanner.component';
 import { BillScannerComponent } from './bill-scanner/bill-scanner.component';
+import { AnnotationToolComponent } from './annotation-tool/annotation-tool.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
@@ -19,7 +20,8 @@ const routes: Routes = [
       { path: 'add-employee', component: AddEmployeeComponent },
       { path: 'verify-employee', component: VerifyEmployeeComponent },
       { path: 'ocr-scanner', component: OcrScannerComponent },
-      { path: 'ocr-template-mapping', component: BillScannerComponent }
+      { path: 'ocr-template-mapping', component: BillScannerComponent },
+      { path: 'annotation-tool', component: AnnotationToolComponent }
     ]
   }
 ];
