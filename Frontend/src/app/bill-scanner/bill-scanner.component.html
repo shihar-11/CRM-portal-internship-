@@ -1,42 +1,32 @@
 <!-- VIEW 1: UPLOAD PAGE -->
-<div *ngIf="currentView === 'upload'" class="split-layout">
-  <div style="display: flex; gap: 24px; align-items: stretch; flex-direction: row; flex: 1;">
-    
-    <!-- Left Side: Upload Panel -->
-    <div class="panel upload-panel" style="flex: 1;">
-      <div class="card-header">
-        <div class="icon-wrapper">
-          <i class="fa-solid fa-receipt"></i>
-        </div>
-        <h2>OCR Template Mapping</h2>
-        <p>Upload a government procurement document to extract structured fields.</p>
+<div *ngIf="currentView === 'upload'" class="upload-view-container">
+  <div class="panel upload-panel full-width-panel">
+    <div class="card-header">
+      <div class="icon-wrapper">
+        <i class="fa-solid fa-receipt"></i>
       </div>
-
-      <div class="drop-zone" 
-        [class.dragover]="isDragging"
-        (dragover)="onDragOver($event)"
-        (dragleave)="onDragLeave($event)"
-        (drop)="onDrop($event)"
-        (click)="fileInput.click()">
-        <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
-        <p *ngIf="!selectedFile">Drag and drop a PDF or Image here, or click to browse</p>
-        <p *ngIf="selectedFile" class="file-name"><i class="fa-solid fa-file"></i> {{ selectedFile.name }}</p>
-        <input type="file" #fileInput hidden accept=".pdf,.jpg,.jpeg,.png" (change)="onFileSelected($event)">
-      </div>
-
-      <button class="btn review-btn action-btn" [disabled]="!selectedFile || isExtracting" (click)="extractData()">
-        <span *ngIf="!isExtracting">Scan Document</span>
-        <span *ngIf="isExtracting">
-          <i class="fa-solid fa-circle-notch fa-spin"></i> Extracting data from document...
-        </span>
-      </button>
+      <h2>OCR Template Mapping</h2>
+      <p>Upload a government procurement document to extract structured fields.</p>
     </div>
 
-    <!-- Right Side: Empty State -->
-    <div class="panel form-panel" style="display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;">
-      <i class="fa-solid fa-file-invoice" style="font-size: 48px; color: var(--border-color); margin-bottom: 16px;"></i>
-      <h3 style="color: var(--text-secondary); font-weight: 500;">Upload a document to extract fields</h3>
+    <div class="drop-zone large-drop-zone" 
+      [class.dragover]="isDragging"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+      (click)="fileInput.click()">
+      <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+      <p *ngIf="!selectedFile">Drag and drop a PDF or Image here, or click to browse</p>
+      <p *ngIf="selectedFile" class="file-name"><i class="fa-solid fa-file"></i> {{ selectedFile.name }}</p>
+      <input type="file" #fileInput hidden accept=".pdf,.jpg,.jpeg,.png" (change)="onFileSelected($event)">
     </div>
+
+    <button class="btn review-btn action-btn full-width-btn" [disabled]="!selectedFile || isExtracting" (click)="extractData()">
+      <span *ngIf="!isExtracting">Scan Document</span>
+      <span *ngIf="isExtracting">
+        <i class="fa-solid fa-circle-notch fa-spin"></i> Extracting data from document...
+      </span>
+    </button>
   </div>
 </div>
 
