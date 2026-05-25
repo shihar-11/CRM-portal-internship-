@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { HttpClientModule } from '@angular/common/http';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -12,6 +12,7 @@ import { AddEmployeeComponent } from './add-employee/add-employee.component';
 import { VerifyEmployeeComponent } from './verify-employee/verify-employee.component';
 import { MainLayoutComponent } from './main-layout/main-layout.component';
 import { OcrScannerComponent } from './ocr-scanner/ocr-scanner.component';
+import { BillScannerComponent } from './bill-scanner/bill-scanner.component';
 
 @NgModule({
   declarations: [
@@ -22,13 +23,15 @@ import { OcrScannerComponent } from './ocr-scanner/ocr-scanner.component';
     AddEmployeeComponent,
     VerifyEmployeeComponent,
     MainLayoutComponent,
-    OcrScannerComponent
+    OcrScannerComponent,
+    BillScannerComponent
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     HttpClientModule,
-    FormsModule
+    FormsModule,
+    ReactiveFormsModule
   ],
   providers: [],
   bootstrap: [AppComponent]

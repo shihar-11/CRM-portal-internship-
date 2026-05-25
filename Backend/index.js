@@ -8,6 +8,9 @@ const authRoutes = require('./routes/auth');
 const leadsRoutes = require('./routes/leads');
 const webhooksRoutes = require('./routes/webhooks');
 const ocrRoutes = require('./routes/ocr');
+const billScannerRoutes = require('./routes/bill-scanner');
+const notificationsRoutes = require('./routes/notifications');
+const profileRoutes = require('./routes/profile');
 
 const app = express();
 
@@ -24,6 +27,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/webhook', webhooksRoutes);
 app.use('/api/ocr', ocrRoutes);
+app.use('/api/bill-scan', billScannerRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Retain legacy login api path just in case
 app.use('/api/login', authRoutes);
@@ -31,6 +37,16 @@ app.use('/api/login', authRoutes);
 // =========================
 // SERVER START
 // =========================
+const createOcrTemplatesTable = require('./alter_db_ocr_templates');
+const createNotificationsAndProfileTables = require('./alter_db_notifications');
+
+const initializeDatabase = async () => {
+  await createOcrTemplatesTable();
+  await createNotificationsAndProfileTables();
+};
+
+initializeDatabase();
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);

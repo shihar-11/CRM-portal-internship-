@@ -57,6 +57,12 @@ router.post('/', async (req, res) => {
     // Notify connected clients
     sse.sendEvent('NEW_LEAD', result.rows[0]);
 
+    // Insert notification
+    await pool.query(
+      `INSERT INTO notifications (message, type, lead_name) VALUES ($1, $2, $3)`,
+      [`New lead added: ${name}`, 'lead_added', name]
+    );
+
     res.status(201).json({ success: true, message: 'Lead added successfully', lead: result.rows[0] });
   } catch (error) {
     console.error('Add Lead Error:', error);
@@ -112,6 +118,12 @@ router.delete('/:id', async (req, res) => {
 
     // Notify connected clients (optional)
     sse.sendEvent('DELETE_LEAD', { id });
+
+    // Insert notification
+    await pool.query(
+      `INSERT INTO notifications (message, type, lead_name) VALUES ($1, $2, $3)`,
+      [`Lead deleted: ${result.rows[0].name}`, 'lead_deleted', result.rows[0].name]
+    );
 
     res.status(200).json({ success: true, message: 'Lead deleted successfully' });
   } catch (error) {

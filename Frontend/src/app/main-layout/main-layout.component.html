@@ -19,6 +19,10 @@
         <i class="fa-solid fa-file-invoice nav-icon"></i>
         <span class="nav-text" *ngIf="!isCollapsed">OCR Scanner</span>
       </a>
+      <a routerLink="/ocr-template-mapping" routerLinkActive="active" class="nav-item">
+        <i class="fa-solid fa-receipt nav-icon"></i>
+        <span class="nav-text" *ngIf="!isCollapsed">OCR Template Mapping</span>
+      </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -46,14 +50,55 @@
           <i class="fa-solid" [ngClass]="isDarkMode ? 'fa-sun' : 'fa-moon'"></i>
         </button>
 
-        <button class="icon-btn notification-bell">
-          <i class="fa-regular fa-bell"></i>
-          <span class="badge">3</span>
-        </button>
+        <div class="notification-wrapper">
+          <button class="icon-btn notification-bell" (click)="toggleNotificationDropdown()">
+            <i class="fa-regular fa-bell"></i>
+            <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+          </button>
+          
+          <div class="dropdown-panel notification-dropdown" *ngIf="showNotificationDropdown">
+            <div class="dropdown-header">
+              <h3>Notifications</h3>
+            </div>
+            <div class="dropdown-body">
+              <div class="empty-state" *ngIf="notifications.length === 0">
+                No notifications yet.
+              </div>
+              <div class="notification-item" 
+                   *ngFor="let notif of notifications" 
+                   [class.unread]="!notif.is_read"
+                   (click)="markAsRead(notif.id)">
+                <div class="notif-icon">
+                  <i class="fa-solid" [ngClass]="notif.type === 'lead_added' ? 'fa-user-plus text-success' : 'fa-user-minus text-danger'"></i>
+                </div>
+                <div class="notif-content">
+                  <p>{{ notif.message }}</p>
+                  <small>{{ notif.created_at | date:'short' }}</small>
+                </div>
+              </div>
+            </div>
+            <div class="dropdown-footer">
+              <button class="text-btn" (click)="markAllAsRead()">Mark all read</button>
+              <button class="text-btn text-danger" (click)="clearAllNotifications()">Clear all</button>
+            </div>
+          </div>
+        </div>
 
-        <div class="profile-menu">
-          <img src="https://ui-avatars.com/api/?name=Admin+User&background=007bff&color=fff" alt="Profile" class="avatar">
-          <span class="profile-name">Admin</span>
+        <div class="profile-wrapper">
+          <div class="profile-menu" (click)="toggleProfileDropdown()">
+            <img *ngIf="profile?.profile_image" [src]="profile?.profile_image" alt="Profile" class="avatar">
+            <div *ngIf="!profile?.profile_image" class="avatar initials">{{ getInitials(profile?.full_name || 'Admin User') }}</div>
+            <span class="profile-name">{{ profile?.full_name || 'Admin' }}</span>
+          </div>
+
+          <div class="dropdown-panel profile-dropdown" *ngIf="showProfileDropdown">
+            <button class="dropdown-item" (click)="openEditProfile()">
+              <i class="fa-solid fa-user-pen"></i> Edit Profile
+            </button>
+            <button class="dropdown-item" (click)="openChangePassword()">
+              <i class="fa-solid fa-key"></i> Change Password
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -74,6 +119,63 @@
          }"></i>
       <span class="toast-message">{{ toast.message }}</span>
       <button class="toast-close" (click)="removeToast(toast)"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal-overlay" *ngIf="showEditProfileModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Profile</h3>
+        <button class="close-btn" (click)="closeModals()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body profile-modal-body">
+        <div class="profile-pic-section">
+          <img *ngIf="profile?.profile_image" [src]="profile?.profile_image" alt="Profile" class="avatar-large">
+          <div *ngIf="!profile?.profile_image" class="avatar-large initials">{{ getInitials(profile?.full_name || 'Admin User') }}</div>
+          
+          <input type="file" #fileInput (change)="onImageSelected($event)" accept="image/*" style="display: none;">
+          <button class="btn btn-outline" (click)="fileInput.click()">Upload Photo</button>
+        </div>
+        
+        <div class="floating-group">
+          <input type="text" [(ngModel)]="editProfileName" placeholder=" " id="editProfileName">
+          <label for="editProfileName">Display Name</label>
+        </div>
+      </div>
+      <div class="modal-footer action-buttons">
+        <button class="btn cancel-btn" (click)="closeModals()">Cancel</button>
+        <button class="btn review-btn" (click)="saveProfileName()">Save Name</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div class="modal-overlay" *ngIf="showChangePasswordModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Change Password</h3>
+        <button class="close-btn" (click)="closeModals()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="floating-group">
+          <input type="password" [(ngModel)]="passwordData.current" placeholder=" " id="currentPwd">
+          <label for="currentPwd">Current Password</label>
+        </div>
+        <div class="floating-group">
+          <input type="password" [(ngModel)]="passwordData.new" placeholder=" " id="newPwd">
+          <label for="newPwd">New Password</label>
+        </div>
+        <div class="floating-group">
+          <input type="password" [(ngModel)]="passwordData.confirm" placeholder=" " id="confirmPwd">
+          <label for="confirmPwd">Confirm New Password</label>
+        </div>
+        <p class="error-text" *ngIf="passwordError"><i class="fa-solid fa-circle-exclamation"></i> {{ passwordError }}</p>
+      </div>
+      <div class="modal-footer action-buttons">
+        <button class="btn cancel-btn" (click)="closeModals()">Cancel</button>
+        <button class="btn review-btn" (click)="updatePassword()">Update Password</button>
+      </div>
     </div>
   </div>
 </div>
