@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { AppStateService } from '../app-state.service';
 import { LeadService } from '../lead.service';
 import { NotificationService } from '../notification.service';
 import { Router } from '@angular/router';
@@ -9,7 +10,7 @@ import { Router } from '@angular/router';
   templateUrl: './ocr-scanner.component.html',
   styleUrls: ['./ocr-scanner.component.css']
 })
-export class OcrScannerComponent implements OnInit {
+export class OcrScannerComponent implements OnInit, OnDestroy {
   isDragging = false;
   selectedFile: File | null = null;
   isExtracting = false;
@@ -37,10 +38,28 @@ export class OcrScannerComponent implements OnInit {
     private http: HttpClient,
     private leadService: LeadService,
     private notificationService: NotificationService,
-    private router: Router
+    private router: Router,
+    private appStateService: AppStateService
   ) {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    if (this.appStateService.hasComponentState('OcrScannerComponent')) {
+      const state = this.appStateService.getComponentState('OcrScannerComponent');
+      this.selectedFile = state.selectedFile;
+      this.extractionComplete = state.extractionComplete;
+      this.leadData = state.leadData;
+      this.placeholders = state.placeholders;
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.appStateService.setComponentState('OcrScannerComponent', {
+      selectedFile: this.selectedFile,
+      extractionComplete: this.extractionComplete,
+      leadData: this.leadData,
+      placeholders: this.placeholders
+    });
+  }
 
   onDragOver(event: DragEvent) {
     event.preventDefault();
@@ -137,6 +156,7 @@ export class OcrScannerComponent implements OnInit {
 
     this.leadService.addLead(payload).subscribe({
       next: (res) => {
+        this.appStateService.clearComponentState('OcrScannerComponent');
         this.notificationService.showSuccess('Lead saved successfully from OCR!');
         this.router.navigate(['/dashboard']);
       },

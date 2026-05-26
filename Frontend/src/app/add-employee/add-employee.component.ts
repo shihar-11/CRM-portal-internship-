@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { AppStateService } from '../app-state.service';
 import { LeadService } from '../lead.service';
 import { NotificationService } from '../notification.service';
 
@@ -8,7 +9,7 @@ import { NotificationService } from '../notification.service';
   templateUrl: './add-employee.component.html',
   styleUrls: ['./add-employee.component.css']
 })
-export class AddEmployeeComponent implements OnInit {
+export class AddEmployeeComponent implements OnInit, OnDestroy {
   lead = {
     name: '',
     department: '',
@@ -24,7 +25,8 @@ export class AddEmployeeComponent implements OnInit {
   constructor(
     private leadService: LeadService, 
     private router: Router,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private appStateService: AppStateService
   ) { }
 
   ngOnInit(): void {
@@ -36,7 +38,15 @@ export class AddEmployeeComponent implements OnInit {
     const tempData = this.leadService.getTempLead();
     if (tempData) {
       this.lead = { ...tempData };
+    } else if (this.appStateService.hasComponentState('AddEmployeeComponent')) {
+      this.lead = this.appStateService.getComponentState('AddEmployeeComponent').lead;
     }
+  }
+
+  ngOnDestroy(): void {
+    this.appStateService.setComponentState('AddEmployeeComponent', {
+      lead: this.lead
+    });
   }
 
   review(formValid: boolean | null) {
@@ -50,6 +60,7 @@ export class AddEmployeeComponent implements OnInit {
 
   cancel() {
     this.leadService.clearTempLead();
+    this.appStateService.clearComponentState('AddEmployeeComponent');
     this.router.navigate(['/dashboard']);
   }
 }

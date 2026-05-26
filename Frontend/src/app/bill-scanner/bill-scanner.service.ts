@@ -8,7 +8,17 @@ import { Observable } from 'rxjs';
 export class BillScannerService {
   private apiUrl = 'http://localhost:3000/api/bill-scan';
 
+  public cachedOrderData: any = null;
+  public cachedStep: number = 1;
+  public hasCachedState: boolean = false;
+
   constructor(private http: HttpClient) { }
+
+  clearCache() {
+    this.cachedOrderData = null;
+    this.cachedStep = 1;
+    this.hasCachedState = false;
+  }
 
   scanDocument(file: File, annotations?: any[], documentType?: string): Observable<any> {
     const formData = new FormData();

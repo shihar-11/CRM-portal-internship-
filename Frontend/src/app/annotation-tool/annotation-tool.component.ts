@@ -1,4 +1,5 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { AppStateService } from '../app-state.service';
 import { BillScannerService } from '../bill-scanner/bill-scanner.service';
 import { NotificationService } from '../notification.service';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -11,7 +12,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
   templateUrl: './annotation-tool.component.html',
   styleUrls: ['./annotation-tool.component.css']
 })
-export class AnnotationToolComponent implements OnInit {
+export class AnnotationToolComponent implements OnInit, OnDestroy {
   isDragging = false;
   selectedFile: File | null = null;
 
@@ -47,10 +48,29 @@ export class AnnotationToolComponent implements OnInit {
   constructor(
     private billScannerService: BillScannerService,
     private notificationService: NotificationService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private appStateService: AppStateService
   ) {}
 
   ngOnInit(): void {
+    if (this.appStateService.hasComponentState('AnnotationToolComponent')) {
+      const state = this.appStateService.getComponentState('AnnotationToolComponent');
+      this.documentType = state.documentType;
+      this.annotations = state.annotations;
+      if (state.selectedFile) {
+        this.selectedFile = state.selectedFile;
+        // Re-render PDF if a file was cached
+        this.renderPdf(this.selectedFile!);
+      }
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.appStateService.setComponentState('AnnotationToolComponent', {
+      documentType: this.documentType,
+      annotations: this.annotations,
+      selectedFile: this.selectedFile
+    });
   }
 
   resetScanner() {
@@ -266,6 +286,7 @@ export class AnnotationToolComponent implements OnInit {
 
     this.billScannerService.saveAnnotations(payload).subscribe({
       next: (res) => {
+        this.appStateService.clearComponentState('AnnotationToolComponent');
         this.isSavingAnnotations = false;
         this.isTestSuccessful = true;
         this.notificationService.showSuccess('Training data saved successfully!');

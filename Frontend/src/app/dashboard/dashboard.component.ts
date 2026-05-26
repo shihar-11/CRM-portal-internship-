@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { AppStateService } from '../app-state.service';
 import { LeadService } from '../lead.service';
 import { NotificationService } from '../notification.service';
 
@@ -55,13 +56,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   constructor(
     private leadService: LeadService, 
     private router: Router,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private appStateService: AppStateService
   ) {}
 
   ngOnInit(): void {
     if (!localStorage.getItem('auth')) {
       this.router.navigate(['/login']);
       return;
+    }
+
+    if (this.appStateService.hasComponentState('DashboardComponent')) {
+      const state = this.appStateService.getComponentState('DashboardComponent');
+      this.searchTerm = state.searchTerm;
+      this.selectedStatus = state.selectedStatus;
+      this.currentPage = state.currentPage;
     }
 
     this.fetchLeads();
@@ -80,6 +89,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.appStateService.setComponentState('DashboardComponent', {
+      searchTerm: this.searchTerm,
+      selectedStatus: this.selectedStatus,
+      currentPage: this.currentPage
+    });
+    
     if (this.eventSource) {
       this.eventSource.close();
     }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { BillScannerService } from './bill-scanner.service';
 import { LeadService } from '../lead.service';
 import { NotificationService } from '../notification.service';
@@ -9,7 +9,7 @@ import { Router } from '@angular/router';
   templateUrl: './bill-scanner.component.html',
   styleUrls: ['./bill-scanner.component.css']
 })
-export class BillScannerComponent implements OnInit {
+export class BillScannerComponent implements OnInit, OnDestroy {
   currentStep = 1;
   isExtracting = false;
   cooldownRemaining = 0;
@@ -68,6 +68,16 @@ export class BillScannerComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    if (this.billScannerService.hasCachedState) {
+      this.orderData = this.billScannerService.cachedOrderData;
+      this.currentStep = this.billScannerService.cachedStep;
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.billScannerService.cachedOrderData = this.orderData;
+    this.billScannerService.cachedStep = this.currentStep;
+    this.billScannerService.hasCachedState = true;
   }
 
   nextStep() {
@@ -344,6 +354,7 @@ export class BillScannerComponent implements OnInit {
 
     this.leadService.addLead(payload).subscribe({
       next: (res) => {
+        this.billScannerService.clearCache();
         this.notificationService.showSuccess('Order saved as lead successfully!');
         this.router.navigate(['/dashboard']);
       },
