@@ -12,8 +12,10 @@ import { Router } from '@angular/router';
 export class BillScannerComponent implements OnInit {
   currentStep = 1;
   isExtracting = false;
+  cooldownRemaining = 0;
   isDragging = false;
   selectedFile: File | null = null;
+  templateMissingError: string | null = null;
   customerTab: 'new' | 'existing' = 'existing';
   searchQuery = '';
   showOrderDetails = true;
@@ -116,51 +118,92 @@ export class BillScannerComponent implements OnInit {
   scanDocument() {
     if (!this.selectedFile) return;
     this.isExtracting = true;
+    this.templateMissingError = null;
     
-    this.billScannerService.scanDocument(this.selectedFile).subscribe({
+    this.billScannerService.scanDocument(this.selectedFile, undefined, this.orderData.document_type).subscribe({
       next: (res: any) => {
         this.isExtracting = false;
         
-        // Auto-populate
-        if (res.order_no) this.orderData.order_no = res.order_no;
-        if (res.order_date) this.orderData.order_date = res.order_date;
-        if (res.project_number) this.orderData.project_number = res.project_number;
-        if (res.project_name) this.orderData.project_name = res.project_name;
-        if (res.order_start) this.orderData.order_start = res.order_start;
-        if (res.order_end) this.orderData.order_end = res.order_end;
-        if (res.billing_cycle) this.orderData.billing_cycle = res.billing_cycle;
-        if (res.no_of_billing_cycles) this.orderData.no_of_billing_cycles = res.no_of_billing_cycles;
-        
-        if (res.customer) {
-          this.orderData.customer = { ...this.orderData.customer, ...res.customer };
-        }
-        
-        if (res.contact_persons && res.contact_persons.length > 0) {
-          this.orderData.contact_persons = res.contact_persons.map((c: any) => ({ ...c, isNew: false }));
-        }
+        // 1. Reset orderData to defaults to avoid stale data
+        this.orderData = {
+          document_type: this.orderData.document_type, // keep current type
+          order_no: '',
+          order_date: '',
+          project_number: '',
+          project_name: '',
+          order_start: '',
+          order_end: '',
+          billing_cycle: 'Monthly',
+          no_of_billing_cycles: 3,
+          document_file: this.orderData.document_file, // keep file
+          customer: {
+            is_existing: false,
+            name: '',
+            email: '',
+            mobile: '',
+            gst_number: '',
+            pan_number: '',
+            official_address: '',
+            contract_state: '',
+            website: ''
+          },
+          contact_persons: [
+            { name: '', designation: '', email: '', mobile: '', isNew: true }
+          ],
+          resource_demand: [] as any[],
+          billing_subscriptions: [] as any[],
+          total_billing: 0,
+          total_subscription: 0
+        };
 
-        if (res.resource_demand && res.resource_demand.length > 0) {
-          this.orderData.resource_demand = res.resource_demand.map((r: any) => ({ ...r, checked: true }));
-        }
+        const extracted = res.extracted || {};
+        const mappedFields = res.mapped_fields || [];
 
-        if (res.billing_subscriptions && res.billing_subscriptions.length > 0) {
-          this.orderData.billing_subscriptions = res.billing_subscriptions.map((s: any) => ({ ...s, checked: true }));
-        } else {
-          // Auto generate if none returned
-          this.generateSubscriptions();
-        }
+        // 2. Forcefully map extracted fields to the UI model, checking standard schema keys first, then custom DB keys
+        this.orderData.order_no = extracted.order_no || extracted.work_order_no || '';
+        this.orderData.project_number = extracted.project_number || extracted.project_no || '';
+        this.orderData.customer.name = extracted.customer?.name || extracted.vendor_name || '';
+        this.orderData.customer.mobile = extracted.customer?.mobile || extracted.phone_number || '';
+        
+        // Map remaining fields similarly
+        this.orderData.project_name = extracted.project_name || '';
+        this.orderData.customer.email = extracted.customer?.email || extracted.email || '';
+        this.orderData.contact_persons[0].name = extracted.contact_persons || '';
+        this.orderData.contact_persons[0].mobile = extracted.customer?.mobile || extracted.phone_number || '';
+        this.orderData.order_date = extracted.order_date || extracted.date || '';
+        this.orderData.customer.official_address = extracted.customer?.official_address || extracted.address || '';
+
+        // Auto generate if none returned
+        this.generateSubscriptions();
 
         this.calculateTotals();
         this.notificationService.showSuccess('Document scanned successfully');
         this.nextStep();
+        this.startCooldown();
       },
       error: (err) => {
         this.isExtracting = false;
         const errMsg = err.error?.error || err.message || 'Unknown error occurred.';
-        this.notificationService.showError('Scanning failed: ' + errMsg);
+        
+        if (errMsg.includes('No annotation template found') || err.status === 404) {
+          this.templateMissingError = err.error?.error || `No annotation template found for document type '${this.orderData.document_type}'. Please use the Annotation Tool to map fields first.`;
+        } else {
+          this.notificationService.showError('Scanning failed: ' + errMsg);
+        }
         console.error('Extraction Error:', err);
+        this.startCooldown();
       }
     });
+  }
+
+  startCooldown() {
+    this.cooldownRemaining = 5;
+    const interval = setInterval(() => {
+      this.cooldownRemaining--;
+      if (this.cooldownRemaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
   }
 
   searchExistingCustomer() {

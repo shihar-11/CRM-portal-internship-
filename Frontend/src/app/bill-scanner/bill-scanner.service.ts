@@ -10,11 +10,14 @@ export class BillScannerService {
 
   constructor(private http: HttpClient) { }
 
-  scanDocument(file: File, annotations?: any[]): Observable<any> {
+  scanDocument(file: File, annotations?: any[], documentType?: string): Observable<any> {
     const formData = new FormData();
     formData.append('document', file);
     if (annotations && annotations.length > 0) {
       formData.append('annotations', JSON.stringify(annotations));
+    }
+    if (documentType) {
+      formData.append('document_type', documentType);
     }
     return this.http.post<any>(this.apiUrl, formData);
   }
