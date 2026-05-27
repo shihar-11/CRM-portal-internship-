@@ -11,6 +11,7 @@ const ocrRoutes = require('./routes/ocr');
 const billScannerRoutes = require('./routes/bill-scanner');
 const notificationsRoutes = require('./routes/notifications');
 const profileRoutes = require('./routes/profile');
+const annotationTemplatesRoutes = require('./routes/annotation-templates');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/ocr', ocrRoutes);
 app.use('/api/bill-scan', billScannerRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/annotation-templates', annotationTemplatesRoutes);
 
 // Retain legacy login api path just in case
 app.use('/api/login', authRoutes);

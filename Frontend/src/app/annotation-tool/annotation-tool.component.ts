@@ -91,13 +91,34 @@ export class AnnotationToolComponent implements OnInit, OnDestroy {
   onDrop(event: DragEvent) {
     event.preventDefault(); event.stopPropagation(); this.isDragging = false;
     if (event.dataTransfer && event.dataTransfer.files.length > 0) {
-      this.handleFile(event.dataTransfer.files[0]);
+      const file = event.dataTransfer.files[0];
+      if (this.validateFile(file, event)) {
+        this.handleFile(file);
+      }
     }
   }
   onFileSelected(event: any) {
     if (event.target.files && event.target.files.length > 0) {
-      this.handleFile(event.target.files[0]);
+      const file = event.target.files[0];
+      if (this.validateFile(file, event)) {
+        this.handleFile(file);
+      }
     }
+  }
+
+  private validateFile(file: File, event?: any): boolean {
+    const validTypes = ['application/pdf', 'image/png', 'image/jpeg'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
+    if (!validTypes.includes(file.type) || file.size > maxSize) {
+      this.selectedFile = null;
+      if (event && event.target && 'value' in event.target) {
+        event.target.value = '';
+      }
+      this.notificationService.showError('Invalid file. Please upload a PDF, PNG, or JPEG under 5MB.');
+      return false;
+    }
+    return true;
   }
 
   handleFile(file: File) {
