@@ -83,7 +83,16 @@ function fetchLeadResponses(formId, versionId) {
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try {
-            resolve(JSON.parse(data));
+            const parsedData = JSON.parse(data);
+            console.log('[LinkedIn Sync] Form', formId, '- response paging:', 
+              JSON.stringify(parsedData.paging), '- elements count:', 
+              parsedData.elements ? parsedData.elements.length : 0);
+
+            if (parsedData.elements && parsedData.elements.length > 0) {
+              console.log('[LinkedIn Sync] First response element:', 
+                JSON.stringify(parsedData.elements[0], null, 2));
+            }
+            resolve(parsedData);
           } catch(e) {
             reject(new Error('Failed to parse response: ' + data));
           }
