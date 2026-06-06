@@ -239,7 +239,7 @@ router.post('/', upload.single('document'), async (req, res) => {
 
     // 1. Fetch saved annotations for this document type
     const templateQuery = await pool.query('SELECT annotations FROM ocr_template_mappings WHERE document_type = $1', [docType]);
-    
+
     if (templateQuery.rows.length === 0 || !templateQuery.rows[0].annotations) {
       return res.status(404).json({ error: `No annotation template found for document type '${rawDocType}'. Please annotate the document first using the Annotation Tool.` });
     }
@@ -255,7 +255,7 @@ router.post('/', upload.single('document'), async (req, res) => {
     let promptAnnotations = "";
     const dynamicProperties = {};
     const fieldKeys = [];
-    
+
     for (const [key, field] of Object.entries(allFields)) {
       dynamicProperties[key] = { type: "string" };
       fieldKeys.push(key);
@@ -314,7 +314,7 @@ ${promptAnnotations}
       // 3. Format response structure
       const extracted = {};
       const mapped_fields = Object.keys(allFields);
-      
+
       for (const key of Object.keys(parsedJSON)) {
         if (mapped_fields.includes(key)) {
           extracted[key] = parsedJSON[key];
@@ -322,8 +322,8 @@ ${promptAnnotations}
       }
 
       const allPossibleKeys = [
-        'work_order_no', 'order_no', 'date', 'order_date', 'project_no', 'project_name', 
-        'project_number', 'order_start', 'order_end', 'billing_cycle', 'no_of_billing_cycles', 
+        'work_order_no', 'order_no', 'date', 'order_date', 'project_no', 'project_name',
+        'project_number', 'order_start', 'order_end', 'billing_cycle', 'no_of_billing_cycles',
         'vendor_name', 'email', 'phone_number', 'contact_persons', 'address', 'grand_total'
       ];
       const unmapped_fields = allPossibleKeys.filter(k => !mapped_fields.includes(k));
@@ -335,28 +335,28 @@ ${promptAnnotations}
       });
     } catch (apiError) {
       console.error("Gemini API Error:", apiError);
-      
+
       const errorMessage = (apiError.message || '').toLowerCase();
-      const isQuotaError = apiError.status === 429 || 
-                           errorMessage.includes('429') || 
-                           errorMessage.includes('quota exceeded') || 
-                           errorMessage.includes('resourceexhausted');
+      const isQuotaError = apiError.status === 429 ||
+        errorMessage.includes('429') ||
+        errorMessage.includes('quota exceeded') ||
+        errorMessage.includes('resourceexhausted');
 
       if (isQuotaError) {
         const rawType = req.body.document_type || 'Work Order';
         const docType = rawType.toLowerCase().replace(' ', '_');
-        
+
         console.warn(`[Gemini API] Quota exceeded / 429 hit. Activating structured mock data fallback for type: ${docType}.`);
-        
+
         const mockExtracted = {};
         const mapped_fields = Object.keys(allFields);
         for (const key of mapped_fields) {
-            mockExtracted[key] = "[Mock DB] " + (allFields[key].label || key);
+          mockExtracted[key] = "[Mock DB] " + (allFields[key].label || key);
         }
 
         const allPossibleKeys = [
-          'work_order_no', 'order_no', 'date', 'order_date', 'project_no', 'project_name', 
-          'project_number', 'order_start', 'order_end', 'billing_cycle', 'no_of_billing_cycles', 
+          'work_order_no', 'order_no', 'date', 'order_date', 'project_no', 'project_name',
+          'project_number', 'order_start', 'order_end', 'billing_cycle', 'no_of_billing_cycles',
           'vendor_name', 'email', 'phone_number', 'contact_persons', 'address', 'grand_total'
         ];
         const unmapped_fields = allPossibleKeys.filter(k => !mapped_fields.includes(k));
@@ -378,11 +378,14 @@ ${promptAnnotations}
 
 router.post('/save-annotation', async (req, res) => {
   try {
-    console.log('=== SAVE ANNOTATION CALLED ===');
-    console.log('Raw request body:', JSON.stringify(req.body, null, 2));
-    console.log('Annotations received:', req.body?.annotations);
-    console.log('Fields count:', Object.keys(req.body?.annotations?.fields || {}).length);
-    console.log('Field keys:', Object.keys(req.body?.annotations?.fields || {}));
+    // const body = decrypt(req.body.data);
+    // console.log("REQUEST BODY:", body, 'test');
+
+    // console.log('=== SAVE ANNOTATION CALLED ===');
+    // console.log('Raw request body:', JSON.stringify(req.body, null, 2));
+    // console.log('Annotations received:', req.body?.annotations);
+    // console.log('Fields count:', Object.keys(req.body?.annotations?.fields || {}).length);
+    // console.log('Field keys:', Object.keys(req.body?.annotations?.fields || {}));
 
     const { document_name, document_type = 'work_order', annotations } = req.body;
     if (!annotations || !document_name) {
@@ -407,7 +410,7 @@ router.post('/save-annotation', async (req, res) => {
       RETURNING id;
     `;
     const result = await pool.query(query, [document_name, document_type, JSON.stringify(annotations)]);
-    
+
     console.log("Upsert complete. Template ID:", result.rows[0].id);
     res.json({ success: true, template_id: result.rows[0].id });
     console.log("Returning response");
