@@ -93,7 +93,7 @@ router.put('/:id', async (req, res) => {
     }
 
     // Notify connected clients (optional)
-    sse.sendEvent('UPDATE_LEAD', result.rows[0]);
+    sse.sendEvent('LEAD_UPDATED', result.rows[0]);
 
     res.status(200).json({ success: true, message: 'Lead updated successfully', lead: result.rows[0] });
   } catch (error) {
@@ -117,7 +117,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     // Notify connected clients (optional)
-    sse.sendEvent('DELETE_LEAD', { id });
+    sse.sendEvent('LEAD_DELETED', { id });
 
     // Insert notification
     await pool.query(

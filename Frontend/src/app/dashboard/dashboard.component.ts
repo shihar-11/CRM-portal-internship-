@@ -81,9 +81,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.eventSource = new EventSource('http://localhost:3000/api/leads/stream');
     this.eventSource.onmessage = (event) => {
       const parsedData = JSON.parse(event.data);
-      if (parsedData.type === 'NEW_LEAD' || parsedData.type === 'UPDATE_LEAD' || parsedData.type === 'DELETE_LEAD') {
-        // Soft refresh when webhook adds data
-        this.fetchLeads();
+      if (parsedData.type === 'NEW_LEAD') {
+        this.leads.unshift(parsedData.data);
+        this.applyFilters();
+        this.calculateStats();
+      } else if (parsedData.type === 'LEAD_UPDATED') {
+        const index = this.leads.findIndex(l => l.id === parsedData.data.id);
+        if (index !== -1) {
+          this.leads[index] = parsedData.data;
+          this.applyFilters();
+          this.calculateStats();
+        }
+      } else if (parsedData.type === 'LEAD_DELETED') {
+        this.leads = this.leads.filter(l => l.id !== parsedData.data.id);
+        this.applyFilters();
+        this.calculateStats();
       }
     };
   }

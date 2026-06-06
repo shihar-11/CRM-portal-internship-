@@ -49,6 +49,9 @@ const initializeDatabase = async () => {
 
 initializeDatabase();
 
+const linkedinSyncService = require('./services/linkedin-sync.service');
+linkedinSyncService.start();
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
