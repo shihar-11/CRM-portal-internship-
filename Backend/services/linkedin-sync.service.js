@@ -121,18 +121,45 @@ function parseLead(element, questionMap) {
   const firstName = fields['FIRST_NAME'] || '';
   const lastName = fields['LAST_NAME'] || '';
   const name = (firstName + ' ' + lastName).trim() || 'Unknown';
-  const email = fields['EMAIL'] || fields['WORK_EMAIL'] || null;
-  const phone = fields['WORK_PHONE_NUMBER'] || fields['PHONE_NUMBER'] || null;
-  const company = fields['COMPANY_NAME'] || null;
+  const email = fields['EMAIL'] || fields['WORK_EMAIL'] || '';
+  const phone = fields['WORK_PHONE_NUMBER'] || fields['PHONE_NUMBER'] || '';
+  const company = fields['COMPANY_NAME'] || '';
 
+  // Return both the mapped structure for the stored procedure and the old structure for SSE
   return {
-    name,
-    email,
-    phone,
-    company,
-    linkedin_id: element.id,
-    source: 'LinkedIn Sync',
-    status: 'New'
+    dbPayload: {
+      contact_name: name,
+      contact_mobile: phone,
+      contact_email: email,
+      company_name: company,
+      lead_source: 'LinkedIn',
+      state_name: fields['STATE'] || '',
+      staff_no: '',
+      staff_no_txt: '',
+      message: 'Imported via LinkedIn Sync',
+      utm_source: 'LinkedIn',
+      utm_medium: '',
+      utm_campaign: '',
+      gclid: '',
+      remarks: '',
+      industry: fields['INDUSTRY'] || '',
+      country_code: fields['COUNTRY'] || '',
+      job_title: fields['JOB_TITLE'] || '',
+      looking_for: '',
+      challenge: '',
+      interested_in: '',
+      headquarters: '',
+      leadgen_id: element.id
+    },
+    ssePayload: {
+      name,
+      email,
+      phone,
+      company,
+      linkedin_id: element.id,
+      source: 'LinkedIn Sync',
+      status: 'New'
+    }
   };
 }
 
@@ -142,6 +169,11 @@ async function syncLeads() {
     console.error('[LinkedIn Sync] Error: LINKEDIN_ACCESS_TOKEN is missing in .env');
     return;
   }
+  
+  // Startup validation logs for configuration
+  const adminId = process.env.LINKEDIN_LEAD_ADMIN_ID || '';
+  const recordSource = process.env.LINKEDIN_RECORD_SOURCE || 'LinkedIn';
+  console.log(`[LinkedIn Sync] Configuration: Admin ID = '${adminId}', Record Source = '${recordSource}'`);
 
   try {
     // Step A — Fetch Lead Forms
@@ -162,6 +194,8 @@ async function syncLeads() {
     }
 
     let totalNewLeads = 0;
+    const allLeadsBatch = [];
+    const sseBatch = [];
 
     // Step B — For each form URN, fetch lead responses
     for (const form of formObjects) {
@@ -173,27 +207,50 @@ async function syncLeads() {
 
       for (const response of leadResponses) {
         // Step C — For each lead response, parse fields
-        const lead = parseLead(response, formQuestionMap[formId] || {});
-
-        // Step D — Save to PostgreSQL with duplicate prevention
-        const result = await db.query(
-          `INSERT INTO leads (name, email, phone, company, source, status, linkedin_id, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-           ON CONFLICT (linkedin_id) DO NOTHING
-           RETURNING *`,
-          [lead.name, lead.email, lead.phone, lead.company, lead.source, lead.status, lead.linkedin_id]
-        );
-
-        if (result.rows.length > 0) {
-          console.log('[LinkedIn Sync] New lead saved:', lead.name, lead.email);
-          sseService.sendEvent('NEW_LEAD', result.rows[0]);
-          totalNewLeads++;
-        } else {
-          console.log('[LinkedIn Sync] Duplicate skipped:', lead.linkedin_id);
-        }
+        const parsed = parseLead(response, formQuestionMap[formId] || {});
+        // Update the parsed source to use the environment variable
+        parsed.dbPayload.lead_source = recordSource;
+        parsed.dbPayload.utm_source = recordSource;
+        
+        allLeadsBatch.push(parsed.dbPayload);
+        sseBatch.push(parsed.ssePayload);
       }
     }
-    console.log(`[LinkedIn Sync] Sync complete. ${totalNewLeads} new leads.`);
+
+    // Step D — Save to PostgreSQL with bulk stored procedure
+    if (allLeadsBatch.length > 0) {
+      console.log(`[LinkedIn Sync] Sending ${allLeadsBatch.length} leads to usp_save_tp_lead_bulk`);
+      try {
+        const payloadStr = JSON.stringify(allLeadsBatch);
+        // Call stored procedure: usp_save_tp_lead_bulk(p_action, p_userby, p_createdip, p_record_source, p_leadtext)
+        const result = await db.query(
+          `SELECT * FROM public.usp_save_tp_lead_bulk(
+            $1::varchar,
+            $2::varchar,
+            $3::varchar,
+            $4::varchar,
+            $5::varchar
+          )`,
+          ['insert_bulk_tp_lead', adminId, '', recordSource, payloadStr]
+        );
+        
+        console.log('[LinkedIn Sync] Stored procedure completed successfully');
+
+        // Optimistically emit NEW_LEAD for the frontend so it updates in real-time
+        for (const sseLead of sseBatch) {
+          sseService.sendEvent('NEW_LEAD', sseLead);
+          totalNewLeads++;
+        }
+      } catch (dbErr) {
+        console.error('[LinkedIn Sync] Database Bulk Insert Error:');
+        console.error(`  Message: ${dbErr.message}`);
+        console.error(`  Code:    ${dbErr.code || 'N/A'}`);
+        console.error(`  Detail:  ${dbErr.detail || 'N/A'}`);
+        console.error(`  Hint:    ${dbErr.hint || 'N/A'}`);
+      }
+    }
+
+    console.log(`[LinkedIn Sync] Sync complete. Processed ${allLeadsBatch.length} leads.`);
   } catch (err) {
     console.error('[LinkedIn Sync] Error:', err.message);
   }
