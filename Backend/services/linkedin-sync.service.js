@@ -1,7 +1,7 @@
 // ALTER TABLE leads ADD COLUMN IF NOT EXISTS linkedin_id VARCHAR(255) UNIQUE;
 
 const https = require('https');
-const pool = require('../db');
+const db = require('../db');
 const sseService = require('./sse.service');
 
 const LINKEDIN_AD_ACCOUNT_ID = '512213121';
@@ -88,10 +88,6 @@ function fetchLeadResponses(formId, versionId) {
               JSON.stringify(parsedData.paging), '- elements count:', 
               parsedData.elements ? parsedData.elements.length : 0);
 
-            if (parsedData.elements && parsedData.elements.length > 0) {
-              console.log('[LinkedIn Sync] First response element:', 
-                JSON.stringify(parsedData.elements[0], null, 2));
-            }
             resolve(parsedData);
           } catch(e) {
             reject(new Error('Failed to parse response: ' + data));
@@ -110,6 +106,36 @@ function fetchLeadResponses(formId, versionId) {
   });
 }
 
+function parseLead(element, questionMap) {
+  const answers = element.formResponse?.answers || [];
+  const fields = {};
+  
+  for (const answer of answers) {
+    const predefined = questionMap[answer.questionId];
+    const textAnswer = answer.answerDetails?.textQuestionAnswer?.answer;
+    if (predefined && textAnswer) {
+      fields[predefined] = textAnswer.trim();
+    }
+  }
+
+  const firstName = fields['FIRST_NAME'] || '';
+  const lastName = fields['LAST_NAME'] || '';
+  const name = (firstName + ' ' + lastName).trim() || 'Unknown';
+  const email = fields['EMAIL'] || fields['WORK_EMAIL'] || null;
+  const phone = fields['WORK_PHONE_NUMBER'] || fields['PHONE_NUMBER'] || null;
+  const company = fields['COMPANY_NAME'] || null;
+
+  return {
+    name,
+    email,
+    phone,
+    company,
+    linkedin_id: element.id,
+    source: 'LinkedIn Sync',
+    status: 'New'
+  };
+}
+
 async function syncLeads() {
   console.log('[LinkedIn Sync] Starting sync...');
   if (!process.env.LINKEDIN_ACCESS_TOKEN) {
@@ -124,6 +150,17 @@ async function syncLeads() {
     const formObjects = formsData.elements || [];
     console.log(`[LinkedIn Sync] Found ${formObjects.length} forms`);
 
+    const formQuestionMap = {};
+    for (const form of formObjects) {
+      formQuestionMap[form.id] = {};
+      const questions = form.content?.questions || [];
+      for (const q of questions) {
+        if (q.predefinedField) {
+          formQuestionMap[form.id][q.questionId] = q.predefinedField;
+        }
+      }
+    }
+
     let totalNewLeads = 0;
 
     // Step B — For each form URN, fetch lead responses
@@ -136,57 +173,23 @@ async function syncLeads() {
 
       for (const response of leadResponses) {
         // Step C — For each lead response, parse fields
-        const id = response.id;
-        let firstName = '';
-        let lastName = '';
-        let fullName = '';
-        let email = '';
-        let phone = '';
-        let company = '';
-
-        const inputResponses = (response.content && response.content.inputFieldResponses) ? response.content.inputFieldResponses : [];
-        let workEmail = '';
-        for (const field of inputResponses) {
-          const type = field.predefinedField || ''; 
-          const val = field.response || '';
-          
-          if (type === 'FIRST_NAME') firstName = val;
-          else if (type === 'LAST_NAME') lastName = val;
-          else if (type === 'EMAIL') email = val;
-          else if (type === 'WORK_EMAIL') workEmail = val;
-          else if (type === 'WORK_PHONE_NUMBER') phone = val;
-          else if (type === 'COMPANY_NAME') company = val;
-        }
-
-        if (!email && workEmail) email = workEmail;
-
-        let name = `${firstName} ${lastName}`.trim();
-        if (!name) name = 'Unknown LinkedIn User'; // fallback
-
-        const source = 'LinkedIn Sync';
-        const status = 'New';
-        const linkedin_id = id;
+        const lead = parseLead(response, formQuestionMap[formId] || {});
 
         // Step D — Save to PostgreSQL with duplicate prevention
-        const query = `
-          INSERT INTO leads (name, email, phone, company, source, status, linkedin_id, created_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-          ON CONFLICT (linkedin_id) DO NOTHING
-          RETURNING *
-        `;
-        // phone can be null if missing, but we'll try to insert what we have
-        const values = [name, email, phone || null, company || '', source, status, linkedin_id];
+        const result = await db.query(
+          `INSERT INTO leads (name, email, phone, company, source, status, linkedin_id, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+           ON CONFLICT (linkedin_id) DO NOTHING
+           RETURNING *`,
+          [lead.name, lead.email, lead.phone, lead.company, lead.source, lead.status, lead.linkedin_id]
+        );
 
-        const dbRes = await pool.query(query, values);
-
-        if (dbRes.rows && dbRes.rows.length > 0) {
-          const savedLead = dbRes.rows[0];
-          console.log(`[LinkedIn Sync] New lead saved: ${name} ${email}`);
-          // SSE broadcast on new lead
-          sseService.sendEvent('NEW_LEAD', savedLead);
+        if (result.rows.length > 0) {
+          console.log('[LinkedIn Sync] New lead saved:', lead.name, lead.email);
+          sseService.sendEvent('NEW_LEAD', result.rows[0]);
           totalNewLeads++;
         } else {
-          console.log(`[LinkedIn Sync] Duplicate skipped: ${linkedin_id}`);
+          console.log('[LinkedIn Sync] Duplicate skipped:', lead.linkedin_id);
         }
       }
     }
