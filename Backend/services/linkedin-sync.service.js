@@ -173,7 +173,14 @@ async function syncLeads() {
   // Startup validation logs for configuration
   const adminId = process.env.LINKEDIN_LEAD_ADMIN_ID || '';
   const recordSource = process.env.LINKEDIN_RECORD_SOURCE || 'LinkedIn';
+  const useTankhaPay = process.env.USE_TANKHAPAY_PROCEDURE === 'true';
   console.log(`[LinkedIn Sync] Configuration: Admin ID = '${adminId}', Record Source = '${recordSource}'`);
+
+  if (useTankhaPay) {
+    console.log('[LinkedIn Sync] Using TankhaPay procedure');
+  } else {
+    console.log('[LinkedIn Sync] Using local lead insertion');
+  }
 
   try {
     // Step A — Fetch Lead Forms
@@ -217,40 +224,67 @@ async function syncLeads() {
       }
     }
 
-    // Step D — Save to PostgreSQL with bulk stored procedure
-    if (allLeadsBatch.length > 0) {
-      console.log(`[LinkedIn Sync] Sending ${allLeadsBatch.length} leads to usp_save_tp_lead_bulk`);
-      try {
-        const payloadStr = JSON.stringify(allLeadsBatch);
-        // Call stored procedure: usp_save_tp_lead_bulk(p_action, p_userby, p_createdip, p_record_source, p_leadtext)
-        const result = await db.query(
-          `SELECT * FROM public.usp_save_tp_lead_bulk(
-            $1::varchar,
-            $2::varchar,
-            $3::varchar,
-            $4::varchar,
-            $5::varchar
-          )`,
-          ['insert_bulk_tp_lead', adminId, '', recordSource, payloadStr]
-        );
-        
-        console.log('[LinkedIn Sync] Stored procedure completed successfully');
+    // Step D — Save to PostgreSQL based on configuration
+    if (useTankhaPay) {
+      if (allLeadsBatch.length > 0) {
+        console.log(`[LinkedIn Sync] Sending ${allLeadsBatch.length} leads to usp_save_tp_lead_bulk`);
+        try {
+          const payloadStr = JSON.stringify(allLeadsBatch);
+          // Call stored procedure: usp_save_tp_lead_bulk(p_action, p_userby, p_createdip, p_record_source, p_leadtext)
+          const result = await db.query(
+            `SELECT * FROM public.usp_save_tp_lead_bulk(
+              $1::varchar,
+              $2::varchar,
+              $3::varchar,
+              $4::varchar,
+              $5::varchar
+            )`,
+            ['insert_bulk_tp_lead', adminId, '', recordSource, payloadStr]
+          );
+          
+          console.log('[LinkedIn Sync] Stored procedure completed successfully');
 
-        // Optimistically emit NEW_LEAD for the frontend so it updates in real-time
-        for (const sseLead of sseBatch) {
-          sseService.sendEvent('NEW_LEAD', sseLead);
-          totalNewLeads++;
+          // Optimistically emit NEW_LEAD for the frontend so it updates in real-time
+          for (const sseLead of sseBatch) {
+            sseService.sendEvent('NEW_LEAD', sseLead);
+            totalNewLeads++;
+          }
+        } catch (dbErr) {
+          console.error('[LinkedIn Sync] Database Bulk Insert Error:');
+          console.error(`  Message: ${dbErr.message}`);
+          console.error(`  Code:    ${dbErr.code || 'N/A'}`);
+          console.error(`  Detail:  ${dbErr.detail || 'N/A'}`);
+          console.error(`  Hint:    ${dbErr.hint || 'N/A'}`);
         }
-      } catch (dbErr) {
-        console.error('[LinkedIn Sync] Database Bulk Insert Error:');
-        console.error(`  Message: ${dbErr.message}`);
-        console.error(`  Code:    ${dbErr.code || 'N/A'}`);
-        console.error(`  Detail:  ${dbErr.detail || 'N/A'}`);
-        console.error(`  Hint:    ${dbErr.hint || 'N/A'}`);
+      }
+    } else {
+      if (sseBatch.length > 0) {
+        for (const lead of sseBatch) {
+          try {
+            const query = `
+              INSERT INTO leads (name, email, phone, company, source, status, linkedin_id, created_at)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+              ON CONFLICT (linkedin_id) DO NOTHING
+              RETURNING *
+            `;
+            const values = [lead.name, lead.email, lead.phone || null, lead.company || '', lead.source, lead.status, lead.linkedin_id];
+            
+            const dbRes = await db.query(query, values);
+            if (dbRes.rows && dbRes.rows.length > 0) {
+              console.log(`[LinkedIn Sync] New lead saved: ${lead.name} ${lead.email}`);
+              sseService.sendEvent('NEW_LEAD', dbRes.rows[0]);
+              totalNewLeads++;
+            } else {
+              console.log(`[LinkedIn Sync] Duplicate skipped: ${lead.linkedin_id}`);
+            }
+          } catch (dbErr) {
+            console.error('[LinkedIn Sync] Insert Error for lead:', lead.linkedin_id, dbErr.message);
+          }
+        }
       }
     }
 
-    console.log(`[LinkedIn Sync] Sync complete. Processed ${allLeadsBatch.length} leads.`);
+    console.log(`[LinkedIn Sync] Sync complete. Processed ${allLeadsBatch.length} leads. ${totalNewLeads} new leads.`);
   } catch (err) {
     console.error('[LinkedIn Sync] Error:', err.message);
   }
