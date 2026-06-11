@@ -39,6 +39,15 @@ function startWatcher() {
       }
 
       try {
+        const existing = await pool.query(
+          `SELECT id FROM document_queue WHERE file_name = $1 AND status IN ('pending', 'processing', 'completed') LIMIT 1`,
+          [fileName]
+        );
+        if (existing.rows.length > 0) {
+          console.log(`[DocWatcher] Already queued, skipping: ${fileName}`);
+          return;
+        }
+
         await pool.query(
           `INSERT INTO document_queue (file_name, file_path, file_type, status)
            VALUES ($1, $2, $3, 'pending')`,

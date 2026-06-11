@@ -94,6 +94,16 @@ async function processNextDocument() {
       [currentDocId]
     );
 
+    try {
+      const processedFolder = process.env.PROCESSED_FOLDER_PATH || path.join(process.env.WATCH_FOLDER_PATH || './watched_docs', '..', 'processed_docs');
+      fs.mkdirSync(processedFolder, { recursive: true });
+      const destination = path.join(processedFolder, doc.file_name);
+      fs.copyFileSync(doc.file_path, destination);
+      fs.unlinkSync(doc.file_path);
+    } catch (moveErr) {
+      console.error(`[DocProcessor] Error moving file for document ${currentDocId}:`, moveErr);
+    }
+
     console.log(`[DocProcessor] Completed document ${currentDocId}`);
 
   } catch (err) {
@@ -133,8 +143,16 @@ async function processNextDocument() {
   }
 }
 
-function startProcessor() {
+async function startProcessor() {
   console.log('[DocProcessor] Starting document processor loop');
+  
+  try {
+    await pool.query(`UPDATE document_queue SET status = 'pending' WHERE status = 'processing'`);
+    console.log('[DocProcessor] Reset stuck processing documents');
+  } catch (err) {
+    console.error('[DocProcessor] Failed to reset stuck processing documents:', err);
+  }
+
   // Check every 15 seconds
   setInterval(processNextDocument, 15000);
 }
