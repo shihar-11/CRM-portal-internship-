@@ -8,6 +8,7 @@ import { MainLayoutComponent } from './main-layout/main-layout.component';
 import { OcrScannerComponent } from './ocr-scanner/ocr-scanner.component';
 import { BillScannerComponent } from './bill-scanner/bill-scanner.component';
 import { AnnotationToolComponent } from './annotation-tool/annotation-tool.component';
+import { DocumentPipelineComponent } from './components/document-pipeline/document-pipeline.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
@@ -21,7 +22,8 @@ const routes: Routes = [
       { path: 'verify-employee', component: VerifyEmployeeComponent },
       { path: 'ocr-scanner', component: OcrScannerComponent },
       { path: 'ocr-template-mapping', component: BillScannerComponent },
-      { path: 'annotation-tool', component: AnnotationToolComponent }
+      { path: 'annotation-tool', component: AnnotationToolComponent },
+      { path: 'document-pipeline', component: DocumentPipelineComponent }
     ]
   }
 ];
