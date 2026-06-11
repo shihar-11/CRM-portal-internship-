@@ -91,6 +91,7 @@ router.delete('/queue/:id', async (req, res) => {
     await pool.query('DELETE FROM document_audit_trail WHERE queue_id = $1', [id]);
     await pool.query('DELETE FROM document_extractions WHERE queue_id = $1', [id]);
     await pool.query('DELETE FROM document_queue WHERE id = $1', [id]);
+    await pool.query('SELECT setval(\'document_queue_id_seq\', COALESCE((SELECT MAX(id) FROM document_queue), 0))');
     res.json({ message: 'Document deleted successfully' });
   } catch (err) {
     console.error('Error deleting document:', err);
