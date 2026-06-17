@@ -40,12 +40,6 @@ async function processNextDocument() {
     const fileBuffer = fs.readFileSync(doc.file_path);
     const base64File = fileBuffer.toString('base64');
 
-    // Determine mime type
-    let mimeType = 'application/octet-stream';
-    if (doc.file_type === 'pdf') mimeType = 'application/pdf';
-    else if (doc.file_type === 'jpg' || doc.file_type === 'jpeg') mimeType = 'image/jpeg';
-    else if (doc.file_type === 'png') mimeType = 'image/png';
-
     // Call Gemini
     if (!process.env.GEMINI_API_KEY) {
       throw new Error('GEMINI_API_KEY is not configured');
@@ -56,15 +50,35 @@ async function processNextDocument() {
 
     const prompt = 'Analyze this document and return ONLY a valid JSON object with exactly these keys: category (string, must be one of: Salary Slip, Bank Statement, Aadhaar Card, PAN Card, Offer Letter, Invoice, Unknown), confidence (integer 0-100 representing how confident you are in the category), extracted_fields (object containing all key-value data you can extract from this document). Return nothing else, no markdown, no explanation, only the JSON object.';
 
-    const geminiResult = await model.generateContent([
-      {
-        inlineData: {
-          data: base64File,
-          mimeType: mimeType
-        }
-      },
-      prompt
-    ]);
+    let geminiParams;
+
+    if (doc.file_type === 'docx') {
+      const mammoth = require('mammoth');
+      const result = await mammoth.extractRawText({ buffer: fileBuffer });
+      const textContent = result.value;
+      geminiParams = [
+        `Here is the text extracted from the document:\n\n${textContent}`,
+        prompt
+      ];
+    } else {
+      // Determine mime type
+      let mimeType = 'application/octet-stream';
+      if (doc.file_type === 'pdf') mimeType = 'application/pdf';
+      else if (doc.file_type === 'jpg' || doc.file_type === 'jpeg') mimeType = 'image/jpeg';
+      else if (doc.file_type === 'png') mimeType = 'image/png';
+
+      geminiParams = [
+        {
+          inlineData: {
+            data: base64File,
+            mimeType: mimeType
+          }
+        },
+        prompt
+      ];
+    }
+
+    const geminiResult = await model.generateContent(geminiParams);
 
     let responseText = geminiResult.response.text();
     // Clean up potential markdown formatting despite instructions

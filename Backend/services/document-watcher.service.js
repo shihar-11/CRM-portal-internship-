@@ -14,7 +14,7 @@ function startWatcher() {
   watcher.on('add', async (filePath) => {
     const ext = path.extname(filePath).toLowerCase();
     
-    if (['.pdf', '.jpg', '.jpeg', '.png'].includes(ext)) {
+    if (['.pdf', '.jpg', '.jpeg', '.png', '.docx'].includes(ext)) {
       const fileName = path.basename(filePath);
       const fileType = ext.substring(1); // remove the leading dot
 
