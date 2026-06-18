@@ -106,8 +106,8 @@
             </td>
             <td>{{ lead.created_at | date:'mediumDate' }}</td>
             <td class="actions-col">
-              <button class="icon-action-btn edit-btn" title="Edit" (click)="openEditModal(lead)">
-                <i class="fa-solid fa-pen"></i>
+              <button class="icon-action-btn view-btn" title="View" (click)="openViewModal(lead)">
+                <i class="fa-solid fa-eye"></i>
               </button>
               <button class="icon-action-btn delete-btn" title="Delete" (click)="confirmDelete(lead)">
                 <i class="fa-solid fa-trash"></i>
@@ -151,7 +151,7 @@
   <div class="modal-overlay" *ngIf="showLeadModal">
     <div class="modal-card lead-form-modal">
       <div class="modal-header">
-        <h3>{{ isEditing ? 'Edit Lead' : 'Add New Lead' }}</h3>
+        <h3>{{ isViewing ? 'View Lead' : 'Add New Lead' }}</h3>
         <button class="close-btn" (click)="closeLeadModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
@@ -189,18 +189,19 @@
               <option value="Referral">Referral</option>
               <option value="Social Media">Social Media</option>
               <option value="Direct">Direct</option>
+              <option value="LinkedIn Sync">LinkedIn Sync</option>
               <option value="Other">Other</option>
             </select>
           </div>
         </div>
         <div class="form-group">
-          <label>Notes</label>
-          <textarea [(ngModel)]="leadForm.notes" placeholder="Notes..."></textarea>
+          <label>Notes (Customer Needs & Requirements)</label>
+          <textarea [(ngModel)]="leadForm.notes" placeholder="Notes..." rows="5"></textarea>
         </div>
       </div>
       <div class="modal-actions">
         <button class="btn cancel-btn" (click)="closeLeadModal()">Cancel</button>
-        <button class="btn add-btn" (click)="saveLead()">{{ isEditing ? 'Update' : 'Save' }}</button>
+        <button class="btn add-btn" (click)="saveLead()">Save Changes</button>
       </div>
     </div>
   </div>

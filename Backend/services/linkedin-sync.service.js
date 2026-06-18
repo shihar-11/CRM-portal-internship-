@@ -109,14 +109,36 @@ function fetchLeadResponses(formId, versionId, startOffset = 0, count = 50) {
 function parseLead(element, questionMap) {
   const answers = element.formResponse?.answers || [];
   const fields = {};
+  const customNotesArr = [];
   
   for (const answer of answers) {
-    const predefined = questionMap[answer.questionId];
-    const textAnswer = answer.answerDetails?.textQuestionAnswer?.answer;
-    if (predefined && textAnswer) {
-      fields[predefined] = textAnswer.trim();
+    const qData = questionMap[answer.questionId];
+    if (!qData) continue;
+
+    let textAnswer = answer.answerDetails?.textQuestionAnswer?.answer;
+
+    // Handle multiple choice
+    if (answer.answerDetails?.multipleChoiceAnswer?.options) {
+       const selectedIndexes = answer.answerDetails.multipleChoiceAnswer.options;
+       textAnswer = selectedIndexes.map(idx => qData.choices[idx] || idx).join(', ');
+    }
+
+    if (!textAnswer) continue;
+
+    if (qData.predefinedField) {
+      fields[qData.predefinedField] = textAnswer.trim();
+      
+      const standardFields = ['FIRST_NAME', 'LAST_NAME', 'EMAIL', 'WORK_EMAIL', 'PHONE_NUMBER', 'WORK_PHONE_NUMBER', 'COMPANY_NAME'];
+      if (!standardFields.includes(qData.predefinedField)) {
+        customNotesArr.push(`${qData.label}: \n${textAnswer.trim()}`);
+      }
+    } else {
+      customNotesArr.push(`${qData.label}: \n${textAnswer.trim()}`);
     }
   }
+
+  const customNotes = customNotesArr.join('\n\n');
+  const messageVal = customNotes || 'Imported via LinkedIn Sync';
 
   const firstName = fields['FIRST_NAME'] || '';
   const lastName = fields['LAST_NAME'] || '';
@@ -136,7 +158,7 @@ function parseLead(element, questionMap) {
       state_name: fields['STATE'] || '',
       staff_no: '',
       staff_no_txt: '',
-      message: 'Imported via LinkedIn Sync',
+      message: messageVal,
       utm_source: 'LinkedIn',
       utm_medium: '',
       utm_campaign: '',
@@ -158,7 +180,9 @@ function parseLead(element, questionMap) {
       company,
       linkedin_id: element.id,
       source: 'LinkedIn Sync',
-      status: 'New'
+      status: 'New',
+      notes: messageVal,
+      submittedAt: element.submittedAt || Date.now()
     }
   };
 }
@@ -194,9 +218,17 @@ async function syncLeads() {
       formQuestionMap[form.id] = {};
       const questions = form.content?.questions || [];
       for (const q of questions) {
-        if (q.predefinedField) {
-          formQuestionMap[form.id][q.questionId] = q.predefinedField;
+        let qData = {
+           predefinedField: q.predefinedField || null,
+           label: q.label || (q.question && q.question.localized && q.question.localized.en_US) || 'Custom Question',
+           choices: {}
+        };
+        if (q.questionDetails?.multipleChoiceQuestionDetails?.options) {
+           for (const opt of q.questionDetails.multipleChoiceQuestionDetails.options) {
+               qData.choices[opt.id] = opt.label || (opt.text && opt.text.localized && opt.text.localized.en_US) || opt.id;
+           }
         }
+        formQuestionMap[form.id][q.questionId] = qData;
       }
     }
 
@@ -291,19 +323,27 @@ async function syncLeads() {
       if (sseBatch.length > 0) {
         for (const lead of sseBatch) {
           try {
-            const checkEmailRes = await db.query('SELECT id FROM leads WHERE email = $1', [lead.email]);
+            const checkEmailRes = await db.query('SELECT id, notes FROM leads WHERE email = $1', [lead.email]);
             if (checkEmailRes.rows && checkEmailRes.rows.length > 0) {
-              console.log(`[LinkedIn Sync] Duplicate email skipped: ${lead.email}`);
+              const existingLead = checkEmailRes.rows[0];
+              // Backfill notes if missing or just the placeholder
+              const currentNotes = existingLead.notes ? existingLead.notes.trim() : '';
+              if (lead.notes && (currentNotes === '' || currentNotes === 'Imported via LinkedIn Sync')) {
+                await db.query('UPDATE leads SET notes = $1 WHERE id = $2', [lead.notes, existingLead.id]);
+                console.log(`[LinkedIn Sync] Duplicate email skipped, but notes updated: ${lead.email}`);
+              } else {
+                console.log(`[LinkedIn Sync] Duplicate email skipped: ${lead.email}`);
+              }
               continue;
             }
 
             const query = `
-              INSERT INTO leads (name, email, phone, company, source, status, linkedin_id, created_at)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+              INSERT INTO leads (name, email, phone, company, source, status, linkedin_id, notes, created_at)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TO_TIMESTAMP($9 / 1000.0))
               ON CONFLICT (linkedin_id) DO NOTHING
               RETURNING *
             `;
-            const values = [lead.name, lead.email, lead.phone || null, lead.company || '', lead.source, lead.status, lead.linkedin_id];
+            const values = [lead.name, lead.email, lead.phone || null, lead.company || '', lead.source, lead.status, lead.linkedin_id, lead.notes, lead.submittedAt];
             
             const dbRes = await db.query(query, values);
             if (dbRes.rows && dbRes.rows.length > 0) {
@@ -326,9 +366,13 @@ async function syncLeads() {
   }
 }
 
-function start() {
-  syncLeads();
-  setInterval(syncLeads, 5 * 60 * 1000);
-}
-
-module.exports = { start };
+module.exports = {
+  start: () => {
+    // Initial sync
+    syncLeads();
+    
+    // Schedule periodic sync
+    setInterval(syncLeads, 5 * 60 * 1000);
+  },
+  syncLeads
+};

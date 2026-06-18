@@ -38,7 +38,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   
   showDeleteModal = false;
   showLeadModal = false;
-  isEditing = false;
+  isViewing = false;
   leadToDelete: any = null;
 
     leadForm = {
@@ -185,7 +185,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   openAddModal() {
-    this.isEditing = false;
+    this.isViewing = false;
     this.leadForm = {
       id: null,
       name: '',
@@ -200,8 +200,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.showLeadModal = true;
   }
 
-  openEditModal(lead: any) {
-    this.isEditing = true;
+  openViewModal(lead: any) {
+    this.isViewing = true;
     this.leadForm = { ...lead };
     this.showLeadModal = true;
   }
@@ -216,7 +216,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.isEditing) {
+    if (this.isViewing) {
       this.leadService.updateLead(this.leadForm.id!, this.leadForm).subscribe({
         next: (res) => {
           this.notificationService.showSuccess('Lead updated successfully');

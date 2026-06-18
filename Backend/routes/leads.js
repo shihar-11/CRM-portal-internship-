@@ -16,7 +16,7 @@ router.get('/stream', (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM leads WHERE status != 'Deleted' ORDER BY id DESC"
+      "SELECT * FROM leads WHERE status != 'Deleted' ORDER BY created_at DESC"
     );
     res.status(200).json(result.rows);
   } catch (error) {
