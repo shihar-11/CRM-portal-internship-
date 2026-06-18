@@ -6,30 +6,21 @@
       <i class="fa-solid fa-layer-group logo-icon" *ngIf="isCollapsed"></i>
     </div>
     
-    <nav class="sidebar-nav">
-      <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
-        <i class="fa-solid fa-chart-pie nav-icon"></i>
-        <span class="nav-text" *ngIf="!isCollapsed">Dashboard</span>
-      </a>
-      <a routerLink="/ocr-scanner" routerLinkActive="active" class="nav-item">
-        <i class="fa-solid fa-file-invoice nav-icon"></i>
-        <span class="nav-text" *ngIf="!isCollapsed">OCR Scanner</span>
-      </a>
-      <a routerLink="/ocr-template-mapping" routerLinkActive="active" class="nav-item">
-        <i class="fa-solid fa-receipt nav-icon"></i>
-        <span class="nav-text" *ngIf="!isCollapsed">OCR Template Mapping</span>
-      </a>
-      <a routerLink="/annotation-tool" routerLinkActive="active" class="nav-item">
-        <i class="fa-solid fa-pencil nav-icon" [ngStyle]="{'border-left': '3px solid transparent'}"></i>
-        <span class="nav-text" *ngIf="!isCollapsed">Annotation Tool</span>
-      </a>
-      <a routerLink="/document-pipeline" routerLinkActive="active" class="nav-item">
-        <i class="fa-solid fa-network-wired nav-icon" [ngStyle]="{'border-left': '3px solid transparent'}"></i>
-        <span class="nav-text" *ngIf="!isCollapsed">Doc Pipeline</span>
+    <nav class="sidebar-nav" cdkDropList (cdkDropListDropped)="drop($event)">
+      <a *ngFor="let item of menuItems" [routerLink]="item.link" routerLinkActive="active" class="nav-item" cdkDrag [cdkDragDisabled]="!isEditMode">
+        <div class="drag-handle" cdkDragHandle *ngIf="isEditMode" (click)="$event.preventDefault()">
+          <i class="fa-solid fa-grip-vertical"></i>
+        </div>
+        <i class="fa-solid nav-icon" [ngClass]="item.icon" [ngStyle]="item.style || {}"></i>
+        <span class="nav-text" *ngIf="!isCollapsed">{{ item.text }}</span>
       </a>
     </nav>
 
     <div class="sidebar-footer">
+      <button class="nav-item edit-menu-btn" (click)="toggleEditMode()" title="Edit Menu" [class.active-edit]="isEditMode">
+        <i class="fa-solid fa-pen-to-square nav-icon"></i>
+        <span class="nav-text" *ngIf="!isCollapsed">{{ isEditMode ? 'Done Editing' : 'Edit Menu' }}</span>
+      </button>
       <button class="nav-item logout-btn" (click)="logout()" title="Logout">
         <i class="fa-solid fa-right-from-bracket nav-icon"></i>
         <span class="nav-text" *ngIf="!isCollapsed">Logout</span>

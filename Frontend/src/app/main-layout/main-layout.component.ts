@@ -4,6 +4,7 @@ import { NotificationService, Toast } from '../notification.service';
 import { BellNotificationService, Notification } from '../services/bell-notification.service';
 import { ProfileService, UserProfile } from '../services/profile.service';
 import { Subscription } from 'rxjs';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-main-layout',
@@ -21,6 +22,16 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private notifSub!: Subscription;
   private countSub!: Subscription;
   private profileSub!: Subscription;
+
+  // Sidebar Menu State
+  isEditMode = false;
+  menuItems = [
+    { link: '/dashboard', icon: 'fa-chart-pie', text: 'Dashboard', style: null },
+    { link: '/ocr-scanner', icon: 'fa-file-invoice', text: 'OCR Scanner', style: null },
+    { link: '/ocr-template-mapping', icon: 'fa-receipt', text: 'OCR Template Mapping', style: null },
+    { link: '/annotation-tool', icon: 'fa-pencil', text: 'Annotation Tool', style: {'border-left': '3px solid transparent'} },
+    { link: '/document-pipeline', icon: 'fa-network-wired', text: 'Doc Pipeline', style: {'border-left': '3px solid transparent'} }
+  ];
 
   // UI State
   showNotificationDropdown = false;
@@ -48,6 +59,15 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     if (!localStorage.getItem('auth')) {
       this.router.navigate(['/login']);
+    }
+
+    const savedMenu = localStorage.getItem('sidebarMenuOrder');
+    if (savedMenu) {
+      try {
+        this.menuItems = JSON.parse(savedMenu);
+      } catch (e) {
+        console.error('Failed to parse menu order', e);
+      }
     }
 
     this.timeInterval = setInterval(() => {
@@ -89,6 +109,15 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     } else {
       document.body.classList.remove('dark-mode');
     }
+  }
+
+  toggleEditMode() {
+    this.isEditMode = !this.isEditMode;
+  }
+
+  drop(event: CdkDragDrop<string[]>) {
+    moveItemInArray(this.menuItems, event.previousIndex, event.currentIndex);
+    localStorage.setItem('sidebarMenuOrder', JSON.stringify(this.menuItems));
   }
 
   logout() {
