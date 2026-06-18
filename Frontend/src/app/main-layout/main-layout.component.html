@@ -11,10 +11,6 @@
         <i class="fa-solid fa-chart-pie nav-icon"></i>
         <span class="nav-text" *ngIf="!isCollapsed">Dashboard</span>
       </a>
-      <a routerLink="/add-employee" routerLinkActive="active" class="nav-item">
-        <i class="fa-solid fa-user-plus nav-icon"></i>
-        <span class="nav-text" *ngIf="!isCollapsed">Add Lead</span>
-      </a>
       <a routerLink="/ocr-scanner" routerLinkActive="active" class="nav-item">
         <i class="fa-solid fa-file-invoice nav-icon"></i>
         <span class="nav-text" *ngIf="!isCollapsed">OCR Scanner</span>
@@ -28,7 +24,7 @@
         <span class="nav-text" *ngIf="!isCollapsed">Annotation Tool</span>
       </a>
       <a routerLink="/document-pipeline" routerLinkActive="active" class="nav-item">
-        <i class="fa-solid fa-file-invoice nav-icon" [ngStyle]="{'border-left': '3px solid transparent'}"></i>
+        <i class="fa-solid fa-network-wired nav-icon" [ngStyle]="{'border-left': '3px solid transparent'}"></i>
         <span class="nav-text" *ngIf="!isCollapsed">Doc Pipeline</span>
       </a>
     </nav>
