@@ -71,9 +71,11 @@
         </tr>
         <tr *ngFor="let item of filteredQueue; let i = index" (click)="viewExtraction(item)" [ngClass]="{'clickable-row': item.status === 'completed'}">
           <td>#{{ i + 1 }}</td>
-          <td class="emp-name-cell">
-            <i class="fa-solid fa-file-invoice"></i>
-            {{ item.file_name }}
+          <td>
+            <div class="emp-name-cell">
+              <i class="fa-solid fa-file-invoice"></i>
+              {{ item.file_name }}
+            </div>
           </td>
           <td>{{ item.file_type | uppercase }}</td>
           <td>
