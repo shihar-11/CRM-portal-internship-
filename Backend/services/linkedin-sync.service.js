@@ -261,6 +261,12 @@ async function syncLeads() {
       if (sseBatch.length > 0) {
         for (const lead of sseBatch) {
           try {
+            const checkEmailRes = await db.query('SELECT id FROM leads WHERE email = $1', [lead.email]);
+            if (checkEmailRes.rows && checkEmailRes.rows.length > 0) {
+              console.log(`[LinkedIn Sync] Duplicate email skipped: ${lead.email}`);
+              continue;
+            }
+
             const query = `
               INSERT INTO leads (name, email, phone, company, source, status, linkedin_id, created_at)
               VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())

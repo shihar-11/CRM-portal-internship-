@@ -16,7 +16,7 @@ router.get('/stream', (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM leads ORDER BY id DESC'
+      "SELECT * FROM leads WHERE status != 'Deleted' ORDER BY id DESC"
     );
     res.status(200).json(result.rows);
   } catch (error) {
@@ -109,7 +109,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const query = `DELETE FROM leads WHERE id = $1 RETURNING *`;
+    const query = `UPDATE leads SET status = 'Deleted' WHERE id = $1 RETURNING *`;
     const result = await pool.query(query, [id]);
 
     if (result.rowCount === 0) {
