@@ -49,7 +49,7 @@ function fetchLeadForms() {
   });
 }
 
-function fetchLeadResponses(formId, versionId) {
+function fetchLeadResponses(formId, versionId, startOffset = 0, count = 50) {
   return new Promise((resolve, reject) => {
     const https = require('https');
     
@@ -60,8 +60,8 @@ function fetchLeadResponses(formId, versionId) {
       '&owner=(sponsoredAccount:urn%3Ali%3AsponsoredAccount%3A512213121)' +
       '&leadType=(leadType:SPONSORED)' +
       '&limitedToTestLeads=false' +
-      '&count=25' +
-      '&start=0' +
+      `&count=${count}` +
+      `&start=${startOffset}` +
       `&versionedLeadGenFormUrn=urn%3Ali%3AversionedLeadGenForm%3A%28urn%3Ali%3AleadGenForm%3A${formId}%2C${versionId}%29`;
 
     const options = {
@@ -200,6 +200,8 @@ async function syncLeads() {
       }
     }
 
+    // Fetch leads going back 2 days from right now
+    const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
     let totalNewLeads = 0;
     const allLeadsBatch = [];
     const sseBatch = [];
@@ -209,18 +211,46 @@ async function syncLeads() {
       const formId = form.id;           // numeric ID from leadForms response
       const versionId = form.versionId || 1;
       
-      const leadsData = await fetchLeadResponses(formId, versionId);
-      const leadResponses = leadsData.elements || [];
+      let startOffset = 0;
+      let hasMore = true;
+      const MAX_PAGES = 10; // Prevent infinite loops
+      let pageCount = 0;
 
-      for (const response of leadResponses) {
-        // Step C — For each lead response, parse fields
-        const parsed = parseLead(response, formQuestionMap[formId] || {});
-        // Update the parsed source to use the environment variable
-        parsed.dbPayload.lead_source = recordSource;
-        parsed.dbPayload.utm_source = recordSource;
-        
-        allLeadsBatch.push(parsed.dbPayload);
-        sseBatch.push(parsed.ssePayload);
+      while (hasMore && pageCount < MAX_PAGES) {
+        pageCount++;
+        const leadsData = await fetchLeadResponses(formId, versionId, startOffset, 50);
+        const leadResponses = leadsData.elements || [];
+
+        if (leadResponses.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        for (const response of leadResponses) {
+          // LinkedIn timestamps are typically in milliseconds
+          const submittedAt = response.submittedAt || 0;
+          
+          if (submittedAt > 0 && submittedAt < twoDaysAgo) {
+            // We have reached leads that are older than 2 days ago
+            // Since elements are returned newest-first, we can stop paginating this form
+            hasMore = false;
+            continue; // Skip processing this older lead
+          }
+
+          // Step C — For each lead response, parse fields
+          const parsed = parseLead(response, formQuestionMap[formId] || {});
+          // Update the parsed source to use the environment variable
+          parsed.dbPayload.lead_source = recordSource;
+          parsed.dbPayload.utm_source = recordSource;
+          
+          allLeadsBatch.push(parsed.dbPayload);
+          sseBatch.push(parsed.ssePayload);
+        }
+
+        // If we didn't break out due to older leads, prepare for the next page
+        if (hasMore) {
+          startOffset += leadResponses.length;
+        }
       }
     }
 
