@@ -3,6 +3,8 @@
 const https = require('https');
 const db = require('../db');
 const sseService = require('./sse.service');
+const { calculateLeadScore } = require('./lead-scoring.service');
+const { broadcastHotLeads } = require('./hot-leads.service');
 
 const LINKEDIN_AD_ACCOUNT_ID = '512213121';
 
@@ -235,6 +237,7 @@ async function syncLeads() {
     // Fetch leads going back 2 days from right now
     const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
     let totalNewLeads = 0;
+    let scoresUpdated = false;
     const allLeadsBatch = [];
     const sseBatch = [];
 
@@ -329,21 +332,36 @@ async function syncLeads() {
               // Backfill notes if missing or just the placeholder
               const currentNotes = existingLead.notes ? existingLead.notes.trim() : '';
               if (lead.notes && (currentNotes === '' || currentNotes === 'Imported via LinkedIn Sync')) {
-                await db.query('UPDATE leads SET notes = $1 WHERE id = $2', [lead.notes, existingLead.id]);
-                console.log(`[LinkedIn Sync] Duplicate email skipped, but notes updated: ${lead.email}`);
+                const { total, breakdown } = calculateLeadScore({
+                  ...existingLead,
+                  created_at: existingLead.created_at,
+                  status: existingLead.status,
+                  email: existingLead.email,
+                  source: existingLead.source
+                });
+                await db.query('UPDATE leads SET notes = $1, lead_score = $2, score_breakdown = $3 WHERE id = $4', [lead.notes, total, breakdown, existingLead.id]);
+                console.log(`[LinkedIn Sync] Duplicate email skipped, but notes and score updated: ${lead.email}`);
+                scoresUpdated = true;
               } else {
                 console.log(`[LinkedIn Sync] Duplicate email skipped: ${lead.email}`);
               }
               continue;
             }
 
+            const { total, breakdown } = calculateLeadScore({
+              created_at: lead.submittedAt,
+              status: lead.status,
+              email: lead.email,
+              source: lead.source
+            });
+
             const query = `
-              INSERT INTO leads (name, email, phone, company, source, status, linkedin_id, notes, created_at)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TO_TIMESTAMP($9 / 1000.0))
+              INSERT INTO leads (name, email, phone, company, source, status, linkedin_id, notes, created_at, lead_score, score_breakdown)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TO_TIMESTAMP($9 / 1000.0), $10, $11)
               ON CONFLICT (linkedin_id) DO NOTHING
               RETURNING *
             `;
-            const values = [lead.name, lead.email, lead.phone || null, lead.company || '', lead.source, lead.status, lead.linkedin_id, lead.notes, lead.submittedAt];
+            const values = [lead.name, lead.email, lead.phone || null, lead.company || '', lead.source, lead.status, lead.linkedin_id, lead.notes, lead.submittedAt, total, breakdown];
             
             const dbRes = await db.query(query, values);
             if (dbRes.rows && dbRes.rows.length > 0) {
@@ -358,6 +376,10 @@ async function syncLeads() {
           }
         }
       }
+    }
+
+    if (totalNewLeads > 0 || scoresUpdated) {
+      broadcastHotLeads();
     }
 
     console.log(`[LinkedIn Sync] Sync complete. Processed ${allLeadsBatch.length} leads. ${totalNewLeads} new leads.`);

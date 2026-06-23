@@ -7,6 +7,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth');
 const leadsRoutes = require('./routes/leads');
 const webhooksRoutes = require('./routes/webhooks');
+const chatbotRoutes = require('./routes/chatbot');
 const ocrRoutes = require('./routes/ocr');
 const billScannerRoutes = require('./routes/bill-scanner');
 const notificationsRoutes = require('./routes/notifications');
@@ -28,6 +29,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/webhook', webhooksRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/bill-scan', billScannerRoutes);
 app.use('/api/notifications', notificationsRoutes);
@@ -44,17 +46,22 @@ app.use('/api/login', authRoutes);
 const createOcrTemplatesTable = require('./alter_db_ocr_templates');
 const createNotificationsAndProfileTables = require('./alter_db_notifications');
 const createDocumentPipelineTables = require('./alter_db_document_pipeline');
+const addLeadScoringColumns = require('./alter_db_lead_scoring');
 
 const initializeDatabase = async () => {
   await createOcrTemplatesTable();
   await createNotificationsAndProfileTables();
   await createDocumentPipelineTables();
+  await addLeadScoringColumns();
 };
 
 initializeDatabase();
 
 const linkedinSyncService = require('./services/linkedin-sync.service');
 linkedinSyncService.start();
+
+const leadScoringCronService = require('./services/lead-scoring-cron.service');
+leadScoringCronService.start();
 
 const { startWatcher } = require('./services/document-watcher.service');
 startWatcher();

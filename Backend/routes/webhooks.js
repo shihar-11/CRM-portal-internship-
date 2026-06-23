@@ -3,6 +3,8 @@ const router = express.Router();
 const linkedinService = require('../services/linkedin.service');
 const pool = require('../db');
 const sse = require('../services/sse.service');
+const { calculateLeadScore } = require('../services/lead-scoring.service');
+const { broadcastHotLeads } = require('../services/hot-leads.service');
 
 // =========================
 // LINKEDIN VERIFICATION CHALLENGE
@@ -72,24 +74,31 @@ router.post('/generic', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Lead already exists' });
     }
 
+    const finalStatus = status || 'New';
+    const finalSource = source || 'Webhook';
+    const { total, breakdown } = calculateLeadScore({ status: finalStatus, email, source: finalSource });
+
     const query = `
-      INSERT INTO leads (name, department, email, status, source, notes, company, linkedin_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO leads (name, department, email, status, source, notes, company, linkedin_id, lead_score, score_breakdown)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `;
     const values = [
       name,
       department || 'General',
       email,
-      status || 'New',
-      source || 'Webhook',
+      finalStatus,
+      finalSource,
       notes || '',
       company || '',
-      linkedin_id || null
+      linkedin_id || null,
+      total,
+      breakdown
     ];
 
     const result = await pool.query(query, values);
     sse.sendEvent('NEW_LEAD', result.rows[0]);
+    broadcastHotLeads();
 
     res.status(201).json({ success: true, lead: result.rows[0] });
   } catch (error) {

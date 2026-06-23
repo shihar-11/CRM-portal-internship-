@@ -1,0 +1,79 @@
+<div class="widget-container" [class.open]="isOpen" [style.right.px]="dragRight !== null ? dragRight : null" [style.bottom.px]="dragBottom !== null ? dragBottom : null">
+  <!-- Expanded Panel -->
+  <div class="widget-panel" *ngIf="isOpen">
+    <div class="panel-header">
+      <div class="tabs">
+        <button class="tab-btn" [class.active]="activeTab === 'Chat'" (click)="switchTab('Chat')">Chat</button>
+        <button class="tab-btn" [class.active]="activeTab === 'HotLeads'" (click)="switchTab('HotLeads')">Hot leads</button>
+      </div>
+    </div>
+
+    <div class="panel-body">
+      <!-- Chat Tab Scaffold -->
+      <div class="tab-content" *ngIf="activeTab === 'Chat'">
+        <div class="chat-area" #chatArea>
+          <div class="empty-chat" *ngIf="chatHistory.length === 0">How can I help you today?</div>
+          
+          <div class="chat-message-list">
+            <div *ngFor="let msg of chatHistory" 
+                 class="chat-bubble" 
+                 [ngClass]="{'user-bubble': msg.role === 'user', 'model-bubble': msg.role === 'model', 'error-bubble': msg.isError}">
+              {{ msg.text }}
+            </div>
+            
+            <!-- Typing Indicator -->
+            <div class="chat-bubble model-bubble typing-indicator-bubble" *ngIf="isTyping">
+              <div class="typing-dot"></div>
+              <div class="typing-dot"></div>
+              <div class="typing-dot"></div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <textarea 
+            class="chat-input" 
+            [(ngModel)]="userInput" 
+            [disabled]="isTyping" 
+            placeholder="Type a message..." 
+            (keydown)="onEnter($event)"
+            rows="1"
+          ></textarea>
+          <button class="send-btn" [disabled]="isTyping || !userInput.trim()" (click)="sendMessage()">
+            <i class="fa fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hot Leads Tab -->
+      <div class="tab-content hot-leads-content" *ngIf="activeTab === 'HotLeads'">
+        <div *ngIf="isLoading" class="loading-state">Loading...</div>
+        <div *ngIf="!isLoading && hotLeads.length === 0" class="empty-state">No hot leads found.</div>
+        
+        <div class="lead-list" *ngIf="!isLoading && hotLeads.length > 0">
+          <div class="lead-row" *ngFor="let lead of hotLeads; let i = index" (click)="navigateToLead(lead)">
+            <div class="lead-avatar">{{ getInitials(lead.name) }}</div>
+            <div class="lead-info">
+              <div class="lead-name">{{ lead.name }}</div>
+              <div class="lead-company">{{ lead.company || lead.email }}</div>
+            </div>
+            <div class="lead-score-wrapper">
+              <span class="lead-score">{{ lead.lead_score }}</span>
+              <i class="fa fa-fire text-danger" *ngIf="i === 0"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Button -->
+  <button 
+    class="widget-btn shadow-lg" 
+    [class.drag-ready]="isDragModeReady"
+    [class.dragging]="isDragging"
+    (click)="onIconClick($event)"
+    (dblclick)="onIconDoubleClick($event)"
+    (mousedown)="onIconMouseDown($event)">
+    <i class="fa" [ngClass]="isOpen ? 'fa-times' : 'fa-comment'"></i>
+  </button>
+</div>

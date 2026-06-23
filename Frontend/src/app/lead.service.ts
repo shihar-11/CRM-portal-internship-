@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -8,6 +8,9 @@ import { Observable } from 'rxjs';
 export class LeadService {
   private apiUrl = 'http://localhost:3000/api';
   private tempLeadData: any = null;
+
+  private openLeadModalSource = new Subject<any>();
+  openLeadModal$ = this.openLeadModalSource.asObservable();
 
   constructor(private http: HttpClient) { }
 
@@ -17,6 +20,14 @@ export class LeadService {
 
   getLeads(): Observable<any> {
     return this.http.get(`${this.apiUrl}/leads`);
+  }
+
+  getHotLeads(limit: number = 5): Observable<any> {
+    return this.http.get(`${this.apiUrl}/leads/hot?limit=${limit}`);
+  }
+
+  queryChatbot(message: string, history: any[]): Observable<any> {
+    return this.http.post(`${this.apiUrl}/chatbot/query`, { message, history });
   }
 
   addLead(data: any): Observable<any> {
@@ -41,5 +52,9 @@ export class LeadService {
 
   clearTempLead() {
     this.tempLeadData = null;
+  }
+
+  triggerOpenLeadModal(lead: any) {
+    this.openLeadModalSource.next(lead);
   }
 }

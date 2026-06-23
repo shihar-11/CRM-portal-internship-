@@ -1,5 +1,7 @@
 const pool = require('../db');
 const sse = require('./sse.service');
+const { calculateLeadScore } = require('./lead-scoring.service');
+const { broadcastHotLeads } = require('./hot-leads.service');
 
 // =========================
 // EXTRACT FIELDS FROM REAL LINKEDIN PAYLOAD
@@ -58,13 +60,16 @@ async function processLinkedInLead(lead) {
       return { success: false, message: 'Duplicate lead' };
     }
 
+    // Calculate score
+    const { total, breakdown } = calculateLeadScore({ status, email, source });
+
     // Insert into DB
     const query = `
-      INSERT INTO leads (name, email, company, status, source, notes, linkedin_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO leads (name, email, company, status, source, notes, linkedin_id, lead_score, score_breakdown)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
-    const values = [name, email, company, status, source, notes, leadId];
+    const values = [name, email, company, status, source, notes, leadId, total, breakdown];
 
     const result = await pool.query(query, values);
     const newLead = result.rows[0];
@@ -73,6 +78,7 @@ async function processLinkedInLead(lead) {
 
     // Push to dashboard in real-time
     sse.sendEvent('NEW_LEAD', newLead);
+    broadcastHotLeads();
 
     return { success: true, lead: newLead };
 

@@ -15,6 +15,7 @@ import { MainLayoutComponent } from './main-layout/main-layout.component';
 import { OcrScannerComponent } from './ocr-scanner/ocr-scanner.component';
 import { BillScannerComponent } from './bill-scanner/bill-scanner.component';
 import { AnnotationToolComponent } from './annotation-tool/annotation-tool.component';
+import { LeadAssistantWidgetComponent } from './lead-assistant-widget/lead-assistant-widget.component';
 
 @NgModule({
   declarations: [
@@ -35,7 +36,8 @@ import { AnnotationToolComponent } from './annotation-tool/annotation-tool.compo
     HttpClientModule,
     FormsModule,
     ReactiveFormsModule,
-    DragDropModule
+    DragDropModule,
+    LeadAssistantWidgetComponent
   ],
   providers: [],
   bootstrap: [AppComponent]

@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { AppStateService } from '../app-state.service';
 import { LeadService } from '../lead.service';
 import { NotificationService } from '../notification.service';
+import { SseStreamService } from '../services/sse-stream.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
@@ -19,7 +21,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   convertedLeads = 0;
   rejectedLeads = 0;
 
-  private eventSource: EventSource | null = null;
+  private sseSub?: Subscription;
+  private modalSub?: Subscription;
 
   // Filters
   searchTerm = '';
@@ -57,7 +60,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private leadService: LeadService, 
     private router: Router,
     private notificationService: NotificationService,
-    private appStateService: AppStateService
+    private appStateService: AppStateService,
+    private sseService: SseStreamService
   ) {}
 
   ngOnInit(): void {
@@ -75,12 +79,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.fetchLeads();
     this.setupSSE();
+
+    // Check if a temp lead was passed from the widget
+    const tempLead = this.leadService.getTempLead();
+    if (tempLead) {
+      this.openViewModal(tempLead);
+      this.leadService.clearTempLead();
+    }
+
+    // Subscribe to reactive modal open events
+    this.modalSub = this.leadService.openLeadModal$.subscribe(lead => {
+      if (lead) {
+        this.openViewModal(lead);
+      }
+    });
   }
 
   setupSSE() {
-    this.eventSource = new EventSource('http://localhost:3000/api/leads/stream');
-    this.eventSource.onmessage = (event) => {
-      const parsedData = JSON.parse(event.data);
+    this.sseSub = this.sseService.messages$.subscribe(parsedData => {
       if (parsedData.type === 'NEW_LEAD') {
         this.leads.unshift(parsedData.data);
         this.applyFilters();
@@ -97,7 +113,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.applyFilters();
         this.calculateStats();
       }
-    };
+    });
   }
 
   ngOnDestroy(): void {
@@ -107,8 +123,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       currentPage: this.currentPage
     });
     
-    if (this.eventSource) {
-      this.eventSource.close();
+    if (this.sseSub) {
+      this.sseSub.unsubscribe();
+    }
+    if (this.modalSub) {
+      this.modalSub.unsubscribe();
     }
   }
 
