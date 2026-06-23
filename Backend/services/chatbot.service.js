@@ -58,43 +58,51 @@ const model = genAI.getGenerativeModel({
 
 // Database execution functions
 async function executeGetLeads(args) {
-  let query = 'SELECT id, name, company, email, status, source, lead_score, created_at FROM leads WHERE 1=1';
-  const params = [];
-  
-  if (args.status) {
-    params.push(args.status);
-    query += ` AND status ILIKE $${params.length}`;
-  }
-  if (args.source) {
-    params.push(args.source);
-    query += ` AND source ILIKE $${params.length}`;
-  }
-  if (args.searchTerm) {
-    params.push(`%${args.searchTerm}%`);
-    query += ` AND (name ILIKE $${params.length} OR email ILIKE $${params.length} OR company ILIKE $${params.length})`;
-  }
-  if (args.dateFrom) {
-    params.push(args.dateFrom);
-    query += ` AND created_at >= $${params.length}`;
-  }
-  if (args.dateTo) {
-    params.push(args.dateTo);
-    query += ` AND created_at <= $${params.length}`;
-  }
+  try {
+    let query = 'SELECT id, name, company, email, status, source, lead_score, created_at FROM leads WHERE 1=1';
+    const params = [];
+    
+    if (args.status) {
+      params.push(args.status);
+      query += ` AND status ILIKE $${params.length}`;
+    }
+    if (args.source) {
+      params.push(args.source);
+      query += ` AND source ILIKE $${params.length}`;
+    }
+    if (args.searchTerm) {
+      params.push(`%${args.searchTerm}%`);
+      query += ` AND (name ILIKE $${params.length} OR email ILIKE $${params.length} OR company ILIKE $${params.length})`;
+    }
+    if (args.dateFrom) {
+      params.push(args.dateFrom);
+      query += ` AND created_at >= $${params.length}`;
+    }
+    if (args.dateTo) {
+      params.push(args.dateTo);
+      query += ` AND created_at <= $${params.length}`;
+    }
 
-  // First get total count matching filters
-  const countQuery = `SELECT COUNT(*) FROM (${query}) AS filtered`;
-  const countResult = await pool.query(countQuery, params);
-  const totalCount = parseInt(countResult.rows[0].count, 10);
+    // First get total count matching filters
+    const countQuery = `SELECT COUNT(*) FROM (${query}) AS filtered`;
+    const countResult = await pool.query(countQuery, params);
+    const totalCount = parseInt(countResult.rows[0].count, 10);
 
-  query += ' ORDER BY created_at DESC LIMIT 50';
-  const result = await pool.query(query, params);
-  
-  return {
-    total_matching: totalCount,
-    returned: result.rows.length,
-    leads: result.rows
-  };
+    query += ' ORDER BY created_at DESC LIMIT 50';
+    const result = await pool.query(query, params);
+    
+    return {
+      total_matching: totalCount,
+      returned: result.rows.length,
+      leads: result.rows
+    };
+  } catch (error) {
+    console.error('=== ERROR IN getLeads TOOL ===');
+    console.error('Args:', args);
+    console.error('Error message:', error.message);
+    console.error('Full error:', error);
+    throw error;
+  }
 }
 
 async function executeGetLeadStats() {
