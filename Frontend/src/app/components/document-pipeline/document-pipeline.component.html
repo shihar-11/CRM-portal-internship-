@@ -47,6 +47,12 @@
       <option value="completed">Completed</option>
       <option value="failed">Failed</option>
     </select>
+    <div style="margin-left: auto; display: flex; align-items: center;">
+      <input type="file" #fileInput multiple (change)="onFilesSelected($event)" style="display: none;">
+      <button class="action-btn" style="background-color: var(--accent-color, #0d6efd); color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center;" (click)="fileInput.click()">
+        <i class="fa-solid fa-upload" style="margin-right: 8px;"></i> Upload Documents
+      </button>
+    </div>
   </div>
 
   <div class="table-wrapper">

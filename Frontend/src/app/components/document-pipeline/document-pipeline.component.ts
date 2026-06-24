@@ -388,4 +388,29 @@ export class DocumentPipelineComponent implements OnInit {
       }
     });
   }
+
+  onFilesSelected(event: any) {
+    const files: FileList = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append('files', files[i]);
+    }
+
+    this.http.post('http://localhost:3000/api/document-pipeline/upload', formData).subscribe({
+      next: () => {
+        alert('Files uploaded successfully');
+        this.fetchQueue();
+        this.fetchStats();
+      },
+      error: (err) => {
+        console.error('Error uploading files', err);
+        alert('Failed to upload files');
+      }
+    });
+
+    // Reset input
+    event.target.value = '';
+  }
 }

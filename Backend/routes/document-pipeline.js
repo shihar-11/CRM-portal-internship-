@@ -3,6 +3,22 @@ const router = express.Router();
 const pool = require('../db');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+
+// Configure multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const watchFolder = process.env.WATCH_FOLDER_PATH || path.join(__dirname, '..', 'watched_docs');
+    if (!fs.existsSync(watchFolder)) {
+      fs.mkdirSync(watchFolder, { recursive: true });
+    }
+    cb(null, watchFolder);
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  }
+});
+const upload = multer({ storage: storage });
 
 // Function to reconstruct nested object from flat dot-notation object
 function unflattenObject(data) {
@@ -217,6 +233,19 @@ router.delete('/queue/:id', async (req, res) => {
   } catch (err) {
     console.error('Error deleting document:', err);
     res.status(500).json({ error: 'Failed to delete document' });
+  }
+});
+
+// POST /api/document-pipeline/upload
+router.post('/upload', upload.array('files'), (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+    res.json({ message: 'Files uploaded successfully', count: req.files.length });
+  } catch (err) {
+    console.error('Error uploading files:', err);
+    res.status(500).json({ error: 'Failed to upload files' });
   }
 });
 
