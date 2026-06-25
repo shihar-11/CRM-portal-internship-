@@ -1,0 +1,106 @@
+# CRM Portal: Comprehensive System & Feature Report
+
+## Executive Summary
+The CRM Portal is an advanced, full-stack web application designed to centralize lead management, automate manual data entry, and intelligently extract data from complex, unstructured documents using cutting-edge AI. Built with a modern technology stack, it replaces traditional spreadsheet-based tracking with real-time updates, automated webhook integrations (e.g., LinkedIn Lead Gen), and a robust, fully automated document processing pipeline. 
+
+This document serves as an exhaustive guide to every feature implemented in the portal, giving in-depth insights into what each function does, how it is made, and its underlying mechanics.
+
+---
+
+## 1. System Architecture & Technology Stack
+
+The application employs a robust client-server architecture to ensure scalability, real-time performance, and secure data handling.
+
+*   **Frontend (User Interface):** Built entirely in **Angular 17** (TypeScript). It leverages RxJS for state management and reactivity. The UI is designed as a Single Page Application (SPA), ensuring smooth navigation without page reloads. It incorporates advanced HTML5 canvas manipulation for native PDF rendering (`pdfjs-dist`).
+*   **Backend (API & Services):** A **Node.js** server powered by **Express.js**. It handles business logic, security, file uploads (via `multer` in-memory and disk storage), and coordinates asynchronous background jobs (e.g., cron jobs and continuous file watchers).
+*   **Database:** A relational **PostgreSQL** database handles structured data persistence. The backend automatically manages the schema using initialization scripts (`alter_db_*.js`), ensuring environments are perfectly synced on startup.
+*   **AI Engine:** Integrated with the **Google Gemini API** (specifically the `gemini-2.5-flash` model) to handle complex Optical Character Recognition (OCR), unstructured text parsing, and strictly-typed template-based data extraction using dynamic JSON Schemas.
+
+---
+
+## 2. Core CRM Features: Lead Management & Scoring
+
+At its core, the portal serves as a central hub for managing potential clients or candidates ("Leads"). 
+
+### Lead Management (CRUD)
+*   **Data Structure:** The PostgreSQL `leads` table stores details such as name, email, phone, company, status, source, notes, and a unique `linkedin_id`.
+*   **APIs:** Express routes (`/api/leads/`) expose endpoints to Fetch all non-deleted leads, Add leads manually, Update leads, and Soft-delete leads (changing status to 'Deleted').
+*   **Dashboard Features:** The frontend angular app presents a data table with local filtering and real-time status management (`New`, `Contacted`, `Qualified`, `Converted`, `Rejected`).
+
+### Automated Lead Scoring Engine
+To help sales teams prioritize follow-ups, the CRM features a rule-based **Lead Scoring Algorithm** implemented in `lead-scoring.service.js`.
+*   **How it works:** Whenever a lead is created or updated, the system evaluates the lead across four metrics out of 100 total points:
+    1.  **Recency (max 30 pts):** Based on the creation date. Leads lose 5 points for every day that passes since creation.
+    2.  **Status (max 40 pts):** 'New' gets 10 pts, 'Contacted' gets 25 pts, and 'Qualified' gets 40 pts. Dead leads ('Converted'/'Rejected') drop to 0 pts.
+    3.  **Email Domain Quality (15 pts):** Checks if the email domain is corporate/business by excluding generic domains like gmail.com or yahoo.com.
+    4.  **Source (15 pts):** Automated sources (LinkedIn Sync, Webhooks) get 15 pts, while manual or standard website sources get 5 pts.
+*   **Hot Leads Tracker:** A dedicated `hot-leads.service.js` continuously monitors the top scoring leads and broadcasts them specifically to connected clients.
+
+---
+
+## 3. Real-Time Capabilities: Server-Sent Events (SSE) & Notifications
+
+Unlike traditional web applications that require users to hit "Refresh" to see new data, this CRM portal is truly real-time.
+
+*   **Continuous Connection (SSE):** The backend maintains an open, continuous HTTP connection (`/api/leads/stream`) with the frontend using Server-Sent Events (implemented via `sse.service.js`).
+*   **Instant Broadcasts:** Whenever a lead is added (via LinkedIn sync or manual entry), updated, or deleted, the backend instantly broadcasts a JSON payload to all connected clients.
+*   **Live UI Updates & Notification Bell:** The Angular dashboard intercepts these events and seamlessly injects the new data into the table. A persistent `notifications` table stores historical alerts, which are displayed as live toasts and an unread counter in the shell navigation.
+
+---
+
+## 4. Automated Integrations: LinkedIn Webhooks & Syncing
+
+To eliminate manual data entry from social media marketing campaigns, the portal integrates directly with LinkedIn via a dedicated polling and syncing background service (`linkedin-sync.service.js`).
+
+### How It Works Under The Hood
+1.  **Periodic Polling:** A background interval calls `syncLeads()` every 5 minutes.
+2.  **Form Discovery:** It queries the LinkedIn API for active Lead Gen Forms associated with the configured sponsored ad account using OAuth 2.0 Bearer tokens.
+3.  **Data Extraction & Mapping:** It fetches responses using pagination, taking care to extract complex multiple-choice and raw text responses. A question-mapping algorithm pairs proprietary LinkedIn question IDs to standard CRM fields (e.g., 'Work email' -> `email`). Extraneous questions are cleanly formatted and pushed into the lead's `notes` field.
+4.  **Storage Routing:** Depending on the environment variables (`USE_TANKHAPAY_PROCEDURE`), the service either:
+    *   Fires a bulk-insert stored procedure (`usp_save_tp_lead_bulk`) to integrate with legacy corporate systems.
+    *   Or directly inserts into the local PostgreSQL `leads` table, applying deduplication using the `linkedin_id` constraint to prevent double-counting.
+5.  **Re-evaluating Existing Leads:** If a lead submits another form with an existing email but new notes, the service intelligently appends the notes and recalculates the lead score.
+
+---
+
+## 5. The "Watcher": Automated AI Document Processing Pipeline
+
+One of the most powerful features of the CRM is its ability to operate autonomously in the background, extracting structured data from bulk documents without human intervention.
+
+### Pipeline Architecture & Execution
+1.  **The Watcher Service:** A Node.js background process (`document-watcher.service.js`) uses `chokidar` to continuously monitor a designated local folder (`watched_docs`). When a new file is detected, it is immediately inserted into the `document_queue` database table with a `pending` status.
+2.  **The Processor Loop:** A separate service (`document-processor.service.js`) queries the database every 15 seconds for `pending` documents. It utilizes a state machine to ensure only one document is processed at a time (avoiding API rate limits).
+3.  **Gemini AI Analysis:** The Processor reads the file and converts it to base64. It sends this to the **Gemini 2.5 Flash** model with a strict prompt: *"Analyze this document and return ONLY a valid JSON object with exactly these keys: category, confidence, extracted_fields..."*.
+4.  **File Management & Audit:** Upon success, the raw file is moved from `watched_docs` to `processed_docs`. The extraction is saved to `document_extractions`, and a highly detailed entry is written to `document_audit_trail` (logging states like `processing_started`, `completed`, or `failed`).
+5.  **Error Recovery:** If the Gemini API is overloaded (e.g., HTTP 503), the document is safely returned to `pending` for automatic retry. Hard failures mark it as `failed`, allowing users to retry via the UI.
+
+---
+
+## 6. Interactive AI Bill & Document Scanning (OCR & Annotation)
+
+For highly specific, templated documents (like proprietary Work Orders or Invoices), the CRM provides a specialized extraction route (`bill-scanner.js`) combined with a dynamic frontend Annotation Tool.
+
+### The Annotation Tool (Template Builder)
+*   **Visual Mapping:** Users upload a blank template of a document. The Angular app renders the PDF onto an HTML `<canvas>`. Users physically draw boxes over the areas where data will appear.
+*   **Spatial Normalization:** The frontend calculates exact X, Y, Width, and Height percentages relative to the document size and saves this coordinate map to the `ocr_template_mappings` table.
+
+### The Bill Scanner (Execution & Strict JSON Schemas)
+*   **Guided Extraction:** When a user uploads a filled-out document, the backend identifies the document type and retrieves the saved bounding-box coordinates.
+*   **Dynamic Schema Generation:** The backend (`bill-scanner.js`) dynamically constructs a strict JSON Schema based on the exact fields mapped in the database.
+*   **Precision AI Prompting:** It sends the image and the exact coordinates to Gemini with the instruction: *"Extract values ONLY for these specific fields... Each field has a bounding box region on the document at these normalized coordinates. Extract text from exactly those regions. Do not infer, guess, or extract any other fields."*
+*   **Format Enforcement:** By tying the dynamic JSON schema to Gemini's `responseSchema` configuration, the backend mathematically guarantees the AI will return high-fidelity data matching the expected types, entirely eliminating hallucinations from other parts of the page.
+*   **Mock Fallbacks:** If API rate limits are hit during a bill scan, the service features a robust fallback mechanism that returns structured mock data so development/testing is not blocked.
+
+---
+
+## 7. Database Architecture & Migrations
+
+The PostgreSQL database is structured to support scalability and accountability. Key tables include:
+
+*   **`leads`**: Central repository for contacts, tracking scores, source, and metadata.
+*   **`notifications`**: Persistent storage for all system events.
+*   **`ocr_template_mappings`**: Stores the complex JSON arrays of bounding-box coordinates.
+*   **`document_queue` & `document_extractions`**: The backbone of the Automated Pipeline.
+*   **`document_audit_trail`**: A critical compliance feature logging every state change or manual override a document undergoes.
+
+The CRM includes automated schema initialization scripts (`alter_db_*.js`) loaded in `index.js`, which ensure that tables, unique constraints, and schema upgrades are seamlessly applied upon server startup without requiring manual database administration.
