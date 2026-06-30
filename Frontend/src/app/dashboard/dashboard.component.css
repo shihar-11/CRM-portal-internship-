@@ -230,7 +230,7 @@
 .delete-btn:hover { color: var(--danger-color); }
 
 .no-data {
-  text-align: center;
+  text-align: center !important;
   padding: 60px 20px !important;
   color: var(--text-secondary);
 }
