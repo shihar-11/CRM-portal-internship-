@@ -3,9 +3,6 @@
   bottom: 24px;
   right: 24px;
   z-index: 1050; /* Higher than mostly everything, below modals if modals are 1060 */
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
 }
 
 .widget-btn {
@@ -48,17 +45,34 @@
   border: 1px solid var(--border-color);
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
-  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.widget-panel.animate-up {
   animation: slideUp 0.3s ease-out;
+}
+
+.widget-panel.animate-down {
+  animation: slideDown 0.3s ease-out;
 }
 
 @keyframes slideUp {
   from {
     opacity: 0;
     transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
   }
   to {
     opacity: 1;

@@ -40,6 +40,11 @@ export class LeadAssistantWidgetComponent implements OnInit, OnDestroy, AfterVie
   private initialRight = 24;
   private initialBottom = 24;
   private clickTimeout: any;
+  private sidebarObserver: MutationObserver | null = null;
+
+  // Dynamic panel position
+  panelPosition: 'above' | 'below' = 'above';
+  panelStyle: { [key: string]: string } = {};
 
   constructor(
     private leadService: LeadService,
@@ -55,11 +60,24 @@ export class LeadAssistantWidgetComponent implements OnInit, OnDestroy, AfterVie
         this.hotLeads = msg.data;
       }
     });
+
+    // Watch for sidebar collapse/expand to re-clamp widget position
+    const layoutContainer = document.querySelector('.layout-container');
+    if (layoutContainer) {
+      this.sidebarObserver = new MutationObserver(() => {
+        // Small delay to let the sidebar transition complete
+        setTimeout(() => this.clampToContentArea(), 350);
+      });
+      this.sidebarObserver.observe(layoutContainer, { attributes: true, attributeFilter: ['class'] });
+    }
   }
 
   ngOnDestroy() {
     if (this.sseSub) {
       this.sseSub.unsubscribe();
+    }
+    if (this.sidebarObserver) {
+      this.sidebarObserver.disconnect();
     }
   }
 
@@ -128,9 +146,10 @@ export class LeadAssistantWidgetComponent implements OnInit, OnDestroy, AfterVie
     const btnRect = this.elementRef.nativeElement.querySelector('.widget-btn').getBoundingClientRect();
     const btnWidth = btnRect.width || 56;
     const btnHeight = btnRect.height || 56;
+    const sidebarWidth = this.getSidebarWidth();
     
     if (newRight < 0) newRight = 0;
-    if (newRight > window.innerWidth - btnWidth) newRight = window.innerWidth - btnWidth;
+    if (newRight > window.innerWidth - sidebarWidth - btnWidth) newRight = window.innerWidth - sidebarWidth - btnWidth;
     
     if (newBottom < 0) newBottom = 0;
     if (newBottom > window.innerHeight - btnHeight) newBottom = window.innerHeight - btnHeight;
@@ -144,6 +163,7 @@ export class LeadAssistantWidgetComponent implements OnInit, OnDestroy, AfterVie
     if (this.isDragging) {
       this.isDragging = false;
       this.isDragModeReady = false; // Exit drag mode on drop
+      this.updatePanelPosition();
     }
   }
 
@@ -159,9 +179,82 @@ export class LeadAssistantWidgetComponent implements OnInit, OnDestroy, AfterVie
 
   togglePanel() {
     this.isOpen = !this.isOpen;
+    if (this.isOpen) {
+      this.updatePanelPosition();
+    }
     // If opening directly to HotLeads, fetch if not already done
     if (this.isOpen && this.activeTab === 'HotLeads' && !this.hasFetchedLeads) {
       this.fetchHotLeads();
+    }
+  }
+
+  private updatePanelPosition(): void {
+    const btn = this.elementRef.nativeElement.querySelector('.widget-btn');
+    if (!btn) return;
+    const btnRect = btn.getBoundingClientRect();
+    const panelWidth = 320;
+    const panelHeight = 420;
+    const margin = 16;
+    const sidebarWidth = this.getSidebarWidth();
+    const padding = 8; // min gap from edges
+
+    // --- Vertical: above or below ---
+    const spaceAbove = btnRect.top;
+    const spaceBelow = window.innerHeight - btnRect.bottom;
+    let top: number;
+
+    if (spaceAbove < panelHeight + margin && spaceBelow > spaceAbove) {
+      this.panelPosition = 'below';
+      top = btnRect.bottom + margin;
+    } else {
+      this.panelPosition = 'above';
+      top = btnRect.top - panelHeight - margin;
+    }
+
+    // Clamp top to viewport
+    if (top < padding) top = padding;
+    if (top + panelHeight > window.innerHeight - padding) {
+      top = window.innerHeight - panelHeight - padding;
+    }
+
+    // --- Horizontal: prefer right-aligned with button, clamp to content area ---
+    let left = btnRect.right - panelWidth; // default: panel right edge = button right edge
+
+    // Don't go past sidebar
+    if (left < sidebarWidth + padding) {
+      left = sidebarWidth + padding;
+    }
+
+    // Don't go past right viewport edge
+    if (left + panelWidth > window.innerWidth - padding) {
+      left = window.innerWidth - panelWidth - padding;
+    }
+
+    this.panelStyle = {
+      'position': 'fixed',
+      'top': top + 'px',
+      'left': left + 'px',
+      'z-index': '1050'
+    };
+  }
+
+  private getSidebarWidth(): number {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+      return sidebar.getBoundingClientRect().width;
+    }
+    return 260; // fallback to expanded width
+  }
+
+  private clampToContentArea(): void {
+    if (this.dragRight === null) return;
+    const btn = this.elementRef.nativeElement.querySelector('.widget-btn');
+    if (!btn) return;
+    const btnWidth = btn.getBoundingClientRect().width || 56;
+    const sidebarWidth = this.getSidebarWidth();
+    const maxRight = window.innerWidth - sidebarWidth - btnWidth;
+    if (this.dragRight > maxRight) {
+      this.dragRight = maxRight;
     }
   }
 

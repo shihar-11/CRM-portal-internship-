@@ -1,6 +1,6 @@
 <div class="widget-container" [class.open]="isOpen" [style.right.px]="dragRight !== null ? dragRight : null" [style.bottom.px]="dragBottom !== null ? dragBottom : null">
   <!-- Expanded Panel -->
-  <div class="widget-panel" *ngIf="isOpen">
+  <div class="widget-panel" *ngIf="isOpen" [ngStyle]="panelStyle" [class.animate-up]="panelPosition === 'above'" [class.animate-down]="panelPosition === 'below'">
     <div class="panel-header">
       <div class="tabs">
         <button class="tab-btn" [class.active]="activeTab === 'Chat'" (click)="switchTab('Chat')">Chat</button>
